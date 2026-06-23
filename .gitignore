@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# Build
+build/
+dist/
+*.spec.bak
+
+# Local config (user-specific paths)
+config.json
+config.local.json
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Old artifacts
+README.html
+INCOGNITO/
+
+# Installer output
+installer/Output/

@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anonymiseur — Protection des données</title>
+  <style>
+    /* ── Variables charte Action Telecom ─────── */
+    :root {
+      --orange:      #F47920;
+      --orange-lt:   #FFF0E5;
+      --orange-dk:   #d9650d;
+      --purple:      #6B2FD9;
+      --purple-lt:   #F0EAFF;
+      --purple-dk:   #5522b8;
+      --bg:          #ECEEF2;
+      --surface:     #FFFFFF;
+      --border:      #DDE1E9;
+      --text:        #1C1F2E;
+      --muted:       #6B7280;
+      --shadow:      0 2px 12px rgba(0,0,0,.08);
+      --shadow-md:   0 6px 24px rgba(0,0,0,.10);
+      --radius:      12px;
+      --radius-sm:   8px;
+    }
+
+    /* ── Reset & base ─────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ───────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: var(--shadow);
+    }
+    header .logo {
+      width: 42px; height: 42px;
+      background: var(--orange);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 900;
+      color: #fff; letter-spacing: -.5px;
+      box-shadow: 0 2px 8px rgba(244,121,32,.35);
+      flex-shrink: 0;
+    }
+    header h1 { font-size: 1.15rem; font-weight: 700; color: var(--text); }
+    header p  { font-size: 0.76rem; color: var(--muted); margin-top: 1px; }
+
+    main {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    /* ── Tabs ─────────────────────────────────── */
+    .tabs {
+      display: flex; gap: 2px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 4px;
+      width: fit-content;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+    }
+    .tab-btn {
+      padding: 8px 24px;
+      border: none; background: transparent;
+      color: var(--muted); font-size: 0.88rem; font-weight: 500;
+      border-radius: var(--radius-sm); cursor: pointer;
+      transition: all .15s;
+    }
+    .tab-btn.active {
+      background: var(--purple);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(107,47,217,.30);
+    }
+    .tab-btn:hover:not(.active) { background: var(--bg); color: var(--text); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Upload zone ──────────────────────────── */
+    .upload-area {
+      background: var(--surface);
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 44px 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      position: relative;
+      box-shadow: var(--shadow);
+    }
+    .upload-area:hover, .upload-area.drag-over {
+      border-color: var(--orange);
+      background: var(--orange-lt);
+    }
+    .upload-area input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    }
+    .upload-icon { font-size: 2.4rem; margin-bottom: 12px; }
+    .upload-area h2 { font-size: .98rem; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .upload-area p  { font-size: 0.81rem; color: var(--muted); line-height: 1.7; }
+    .upload-area .file-name {
+      margin-top: 14px; font-size: 0.85rem; color: var(--orange);
+      font-weight: 600;
+    }
+
+    /* ── Mapping row ──────────────────────────── */
+    .mapping-row {
+      margin-top: 14px;
+      display: flex; align-items: center; gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 11px 16px;
+      box-shadow: var(--shadow);
+    }
+    .mapping-row label { font-size: 0.84rem; color: var(--muted); flex: 1; }
+    .mapping-row .mapping-file-name { font-size: 0.81rem; color: var(--orange); font-weight: 500; }
+    .btn-ghost {
+      padding: 6px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--muted); font-size: 0.81rem; cursor: pointer;
+      transition: all .15s; white-space: nowrap;
+      position: relative; overflow: hidden;
+    }
+    .btn-ghost input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    }
+    .btn-ghost:hover { border-color: var(--orange); color: var(--orange); background: var(--orange-lt); }
+
+    /* ── Action buttons ───────────────────────── */
+    .actions { margin-top: 18px; display: flex; gap: 10px; }
+    .btn-primary {
+      padding: 10px 28px; border-radius: var(--radius-sm);
+      background: var(--purple);
+      color: #fff; font-size: 0.9rem; font-weight: 600;
+      border: none; cursor: pointer;
+      transition: background .15s, box-shadow .15s;
+      box-shadow: 0 2px 10px rgba(107,47,217,.30);
+    }
+    .btn-primary:hover  { background: var(--purple-dk); box-shadow: 0 4px 16px rgba(107,47,217,.40); }
+    .btn-primary:active { background: var(--purple-dk); }
+    .btn-primary:disabled { background: #c8b8f0; cursor: not-allowed; box-shadow: none; }
+
+    .btn-secondary {
+      padding: 10px 22px; border-radius: var(--radius-sm);
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--muted); font-size: 0.87rem; font-weight: 500;
+      cursor: pointer; transition: all .15s;
+    }
+    .btn-secondary:hover { border-color: var(--orange); color: var(--orange); background: var(--orange-lt); }
+
+    /* ── Loader ───────────────────────────────── */
+    #loader {
+      display: none;
+      align-items: center; gap: 10px;
+      margin-top: 18px; font-size: 0.87rem; color: var(--muted);
+    }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--orange);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error ────────────────────────────────── */
+    #error-box {
+      display: none;
+      margin-top: 18px;
+      background: #FFF0F0; border: 1px solid #FFCDD2;
+      border-left: 4px solid #e53935;
+      border-radius: var(--radius-sm); padding: 12px 16px;
+      color: #c62828; font-size: 0.87rem;
+    }
+
+    /* ── Results ──────────────────────────────── */
+    #results { display: none; margin-top: 28px; }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 768px) { .results-grid { grid-template-columns: 1fr; } }
+
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .result-card-header {
+      padding: 11px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: #FAFBFC;
+    }
+    .result-card-header span {
+      font-size: 0.78rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .06em;
+    }
+    .badge {
+      font-size: 0.7rem; padding: 2px 9px; border-radius: 20px;
+      font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    }
+    .badge-original { background: #E6F7EE; color: #1B7F4A; }
+    .badge-anon     { background: var(--purple-lt); color: var(--purple); }
+
+    .result-text {
+      padding: 14px 16px;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.79rem;
+      line-height: 1.75;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 360px;
+      overflow-y: auto;
+      color: #374151;
+    }
+    .result-text::-webkit-scrollbar { width: 5px; }
+    .result-text::-webkit-scrollbar-track { background: #f9fafb; }
+    .result-text::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Tags anonymisés */
+    .result-text .tag {
+      background: var(--purple-lt);
+      color: var(--purple);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-weight: 700;
+      border: 1px solid #D4C0F7;
+    }
+
+    /* ── Summary ──────────────────────────────── */
+    #summary-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+    #summary-section .section-header {
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      background: #FAFBFC;
+    }
+    #summary-section .section-header h3 { font-size: 0.88rem; font-weight: 700; color: var(--text); }
+    #summary-count { font-size: 0.79rem; color: var(--muted); }
+
+    #summary-body { padding: 16px 18px; display: flex; flex-wrap: wrap; gap: 22px; }
+
+    .category-block h4 {
+      font-size: 0.72rem; text-transform: uppercase; letter-spacing: .07em;
+      color: var(--orange); font-weight: 700; margin-bottom: 8px;
+    }
+    .category-block table { border-collapse: collapse; }
+    .category-block td {
+      padding: 4px 10px; font-size: 0.81rem;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .category-block td:first-child {
+      font-family: monospace; color: var(--purple); font-weight: 700;
+      padding-right: 18px;
+    }
+    .category-block td:last-child { color: var(--muted); }
+
+    /* ── Download bar ─────────────────────────── */
+    .download-bar { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* ── Modal OCR ────────────────────────────── */
+    .modal-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(28,31,46,.55); z-index: 100;
+      align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px 32px;
+      width: min(520px, 94vw); box-shadow: var(--shadow-md);
+    }
+    .modal h2 { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .modal p  { font-size: .83rem; color: var(--muted); margin-bottom: 16px; line-height: 1.65; }
+    .modal label { display: block; font-size: .8rem; color: var(--muted); font-weight: 500; margin-bottom: 5px; }
+    .modal input[type=text] {
+      width: 100%; padding: 9px 12px; border-radius: var(--radius-sm);
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); font-size: .87rem; outline: none;
+      transition: border-color .15s;
+    }
+    .modal input[type=text]:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(244,121,32,.12); }
+    .modal .modal-footer { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
+    .modal .msg { font-size: .8rem; margin-top: 10px; padding: 9px 13px; border-radius: var(--radius-sm); }
+    .modal .msg.ok  { background: #E6F7EE; color: #1B7F4A; border: 1px solid #B2DFC7; }
+    .modal .msg.err { background: #FFF0F0; color: #c62828; border: 1px solid #FFCDD2; }
+    .modal .steps { background: var(--bg); border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 16px; border: 1px solid var(--border); }
+    .modal .steps ol { padding-left: 18px; }
+    .modal .steps li { font-size: .82rem; color: var(--muted); margin-bottom: 7px; line-height: 1.55; }
+    .modal .steps a  { color: var(--orange); text-decoration: none; font-weight: 500; }
+    .modal .steps a:hover { text-decoration: underline; }
+
+    /* ── Error dé-anonymiser ──────────────────── */
+    #error-box-da {
+      display: none; margin-top: 18px;
+      background: #FFF0F0; border: 1px solid #FFCDD2;
+      border-left: 4px solid #e53935;
+      border-radius: var(--radius-sm); padding: 12px 16px;
+      color: #c62828; font-size: .87rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">AT</div>
+  <div>
+    <h1>Anonymiseur de données sensibles</h1>
+    <p>Protégez vos données personnelles avant de les soumettre à un outil IA</p>
+  </div>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+    <span id="header-ocr-badge" style="font-size:.78rem;padding:4px 10px;border-radius:20px;font-weight:600;cursor:pointer"
+          onclick="openOcrModal()" title="Configurer Tesseract OCR"></span>
+  </div>
+</header>
+
+<!-- ══ Modale configuration OCR ══════════════════════ -->
+<div class="modal-backdrop" id="ocr-modal">
+  <div class="modal">
+    <h2>⚙ Configuration Tesseract OCR</h2>
+    <p>Tesseract est requis pour analyser les <strong>images</strong> et les <strong>PDF scannés</strong>.
+       Il s'installe séparément (gratuit, open-source).</p>
+
+    <div class="steps">
+      <ol>
+        <li>Téléchargez l'installeur Windows :<br>
+            <a href="https://github.com/UB-Mannheim/tesseract/wiki" target="_blank">
+              https://github.com/UB-Mannheim/tesseract/wiki
+            </a>
+        </li>
+        <li>Lancez l'installeur — cochez <strong>"French"</strong> dans les langues.</li>
+        <li>Notez le dossier d'installation (ex : <code>C:\Program Files\Tesseract-OCR</code>).</li>
+        <li>Collez le chemin complet vers <strong>tesseract.exe</strong> ci-dessous.</li>
+      </ol>
+    </div>
+
+    <label for="tesseract-path-input">Chemin vers tesseract.exe</label>
+    <input type="text" id="tesseract-path-input"
+           placeholder="C:\Program Files\Tesseract-OCR\tesseract.exe" />
+    <div id="ocr-modal-msg" style="display:none" class="msg"></div>
+
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeOcrModal()">Fermer</button>
+      <button class="btn-primary" onclick="saveTesseractPath()">✔ Valider</button>
+    </div>
+  </div>
+</div>
+
+<main>
+
+  <!-- ── Tabs ─────────────────────────────────── -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="anon">Anonymiser</button>
+    <button class="tab-btn" data-tab="deanon">Dé-anonymiser</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- TAB : ANONYMISER                           -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="tab-panel active" id="tab-anon">
+
+    <div class="upload-area" id="drop-zone">
+      <input type="file" id="file-input" accept=".txt,.log,.csv,.json,.xml,.html,.md,.cfg,.ini,.conf,.yaml,.yml,.toml,.pdf,.png,.jpg,.jpeg,.bmp,.tiff,.tif,.webp,.gif" />
+      <div class="upload-icon" id="upload-icon">📄</div>
+      <h2>Glissez un fichier ici ou cliquez pour sélectionner</h2>
+      <p><strong>Texte :</strong> .txt .log .csv .json .xml .yaml .toml…<br>
+         <strong>Document :</strong> .pdf (natif ou scanné)<br>
+         <strong>Image :</strong> .png .jpg .jpeg .bmp .tiff .webp (OCR automatique)</p>
+      <p style="margin-top:6px;font-size:0.75rem;font-weight:500" id="ocr-status-badge"></p>
+      <div class="file-name" id="file-label"></div>
+    </div>
+
+    <div class="mapping-row">
+      <span>🗂️</span>
+      <label>Mapping Json existant (optionnel)</label>
+      <div class="mapping-file-name" id="mapping-label">Aucun</div>
+      <div class="btn-ghost">
+        <input type="file" id="mapping-input" accept=".json" />
+        Choisir mapping.json
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-primary" id="btn-anonymize" disabled>🔒 Anonymiser</button>
+      <button class="btn-secondary" id="btn-reset">Réinitialiser</button>
+    </div>
+
+    <div id="loader"><div class="spinner"></div> Analyse en cours…</div>
+    <div id="error-box"></div>
+
+    <div id="results">
+      <div class="results-grid">
+        <div class="result-card">
+          <div class="result-card-header">
+            <span>Texte extrait</span>
+            <span id="extraction-method" style="display:none;font-size:.72rem;color:#1B7F4A;font-weight:600"></span>
+            <div class="badge badge-original">ORIGINAL</div>
+          </div>
+          <div class="result-text" id="original-text"></div>
+        </div>
+        <div class="result-card">
+          <div class="result-card-header">
+            <span>Texte anonymisé</span>
+            <div class="badge badge-anon">ANONYMISÉ</div>
+          </div>
+          <div class="result-text" id="anon-text"></div>
+        </div>
+      </div>
+
+      <div id="summary-section">
+        <div class="section-header">
+          <h3>📋 Données détectées et remplacées</h3>
+          <span id="summary-count"></span>
+        </div>
+        <div id="summary-body"></div>
+      </div>
+
+      <div class="download-bar">
+        <button class="btn-primary" id="btn-dl-anon">⬇ Télécharger le fichier anonymisé</button>
+        <button class="btn-secondary" id="btn-dl-mapping">⬇ Télécharger mapping.json</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- TAB : DÉ-ANONYMISER                        -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-deanon">
+
+    <div class="upload-area" id="drop-zone-da">
+      <input type="file" id="file-input-da" accept=".txt,.log,.csv,.json,.xml,.html,.md,.cfg,.ini,.conf,.yaml,.yml,.toml,.pdf,.png,.jpg,.jpeg,.bmp,.tiff,.tif,.webp,.gif" />
+      <div class="upload-icon">🔓</div>
+      <h2>Glissez le fichier anonymisé ici</h2>
+      <p>Texte, PDF ou image — mêmes formats que l'anonymisation</p>
+      <div class="file-name" id="file-label-da"></div>
+    </div>
+
+    <div class="mapping-row">
+      <span>🗂️</span>
+      <label>Fichier mapping.json <strong style="color:#e53935">obligatoire</strong></label>
+      <div class="mapping-file-name" id="mapping-label-da">Aucun</div>
+      <div class="btn-ghost">
+        <input type="file" id="mapping-input-da" accept=".json" />
+        Choisir mapping.json
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-primary" id="btn-deanonymize" disabled>🔓 Dé-anonymiser</button>
+      <button class="btn-secondary" id="btn-reset-da">Réinitialiser</button>
+    </div>
+
+    <div id="loader-da"><div class="spinner"></div> Traitement…</div>
+    <div id="error-box-da" style="display:none;margin-top:20px;background:#2a1a1a;border:1px solid #7f2020;border-radius:10px;padding:14px 18px;color:#f87171;font-size:.88rem;"></div>
+
+    <div id="results-da" style="display:none;margin-top:32px;">
+      <div class="results-grid">
+        <div class="result-card">
+          <div class="result-card-header">
+            <span>Texte anonymisé (entrée)</span>
+            <div class="badge badge-anon">ENTRÉE</div>
+          </div>
+          <div class="result-text" id="original-text-da"></div>
+        </div>
+        <div class="result-card">
+          <div class="result-card-header">
+            <span>Texte restauré</span>
+            <div class="badge badge-original">RESTAURÉ</div>
+          </div>
+          <div class="result-text" id="anon-text-da"></div>
+        </div>
+      </div>
+      <div class="download-bar">
+        <button class="btn-primary" id="btn-dl-da">⬇ Télécharger le fichier restauré</button>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+/* ────────────────────────────────────────────
+   OCR status on load
+──────────────────────────────────────────── */
+fetch('/status').then(r => r.json()).then(d => {
+  const badge = document.getElementById('ocr-status-badge');
+  if (badge) {
+    badge.textContent = d.ocr_available
+      ? '✅ ' + d.ocr_status
+      : '⚠️ ' + d.ocr_status;
+    badge.style.color = d.ocr_available ? '#1B7F4A' : '#92550A';
+  }
+}).catch(() => {});
+
+/* ────────────────────────────────────────────
+   State
+──────────────────────────────────────────── */
+const state = {
+  file: null, mapping: null,
+  anonText: '', filename: '', mappingData: {},
+};
+const stateDA = {
+  file: null, mapping: null,
+  restoredText: '', filename: '',
+};
+
+/* ────────────────────────────────────────────
+   Tabs
+──────────────────────────────────────────── */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ────────────────────────────────────────────
+   Helpers
+──────────────────────────────────────────── */
+function setLoader(show) {
+  document.getElementById('loader').style.display = show ? 'flex' : 'none';
+}
+function setLoaderDA(show) {
+  document.getElementById('loader-da').style.display = show ? 'flex' : 'none';
+}
+function showError(msg) {
+  const box = document.getElementById('error-box');
+  box.textContent = '⚠ ' + msg;
+  box.style.display = 'block';
+}
+function showErrorDA(msg) {
+  const box = document.getElementById('error-box-da');
+  box.textContent = '⚠ ' + msg;
+  box.style.display = 'block';
+}
+function clearError() {
+  document.getElementById('error-box').style.display = 'none';
+}
+function clearErrorDA() {
+  document.getElementById('error-box-da').style.display = 'none';
+}
+
+/** Remplace [TAG_N] par <span class="tag">[TAG_N]</span> */
+function highlightTags(text) {
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\[([A-Z0-9_]+_\d+)\]/g, '<span class="tag">[$1]</span>');
+}
+
+/* ────────────────────────────────────────────
+   Drag & Drop — Anonymiser
+──────────────────────────────────────────── */
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) setFile(f);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+
+function setFile(f) {
+  state.file = f;
+  const ext = f.name.split('.').pop().toLowerCase();
+  const icons = { pdf:'📑', png:'🖼️', jpg:'🖼️', jpeg:'🖼️', bmp:'🖼️', tiff:'🖼️', tif:'🖼️', webp:'🖼️', gif:'🖼️' };
+  const icon = icons[ext] || '📎';
+  document.getElementById('upload-icon').textContent = icon;
+  document.getElementById('file-label').textContent = `${icon} ${f.name} (${formatSize(f.size)})`;
+  document.getElementById('btn-anonymize').disabled = false;
+  clearError();
+}
+
+document.getElementById('mapping-input').addEventListener('change', function() {
+  if (this.files[0]) {
+    state.mapping = this.files[0];
+    document.getElementById('mapping-label').textContent = this.files[0].name;
+  }
+});
+
+document.getElementById('btn-reset').addEventListener('click', resetAnon);
+function resetAnon() {
+  state.file = null; state.mapping = null;
+  fileInput.value = '';
+  document.getElementById('mapping-input').value = '';
+  document.getElementById('file-label').textContent = '';
+  document.getElementById('mapping-label').textContent = 'Aucun';
+  document.getElementById('btn-anonymize').disabled = true;
+  document.getElementById('results').style.display = 'none';
+  clearError();
+}
+
+/* ────────────────────────────────────────────
+   Drag & Drop — Dé-anonymiser
+──────────────────────────────────────────── */
+const dropZoneDA = document.getElementById('drop-zone-da');
+const fileInputDA = document.getElementById('file-input-da');
+
+dropZoneDA.addEventListener('dragover', e => { e.preventDefault(); dropZoneDA.classList.add('drag-over'); });
+dropZoneDA.addEventListener('dragleave', () => dropZoneDA.classList.remove('drag-over'));
+dropZoneDA.addEventListener('drop', e => {
+  e.preventDefault(); dropZoneDA.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) setFileDA(f);
+});
+fileInputDA.addEventListener('change', () => { if (fileInputDA.files[0]) setFileDA(fileInputDA.files[0]); });
+
+function setFileDA(f) {
+  stateDA.file = f;
+  document.getElementById('file-label-da').textContent = `📎 ${f.name} (${formatSize(f.size)})`;
+  updateBtnDA();
+}
+
+document.getElementById('mapping-input-da').addEventListener('change', function() {
+  if (this.files[0]) {
+    stateDA.mapping = this.files[0];
+    document.getElementById('mapping-label-da').textContent = this.files[0].name;
+    updateBtnDA();
+  }
+});
+
+function updateBtnDA() {
+  document.getElementById('btn-deanonymize').disabled = !(stateDA.file && stateDA.mapping);
+}
+
+document.getElementById('btn-reset-da').addEventListener('click', () => {
+  stateDA.file = null; stateDA.mapping = null;
+  fileInputDA.value = '';
+  document.getElementById('mapping-input-da').value = '';
+  document.getElementById('file-label-da').textContent = '';
+  document.getElementById('mapping-label-da').textContent = 'Aucun';
+  document.getElementById('btn-deanonymize').disabled = true;
+  document.getElementById('results-da').style.display = 'none';
+  clearErrorDA();
+});
+
+/* ────────────────────────────────────────────
+   Anonymiser — submit
+──────────────────────────────────────────── */
+document.getElementById('btn-anonymize').addEventListener('click', async () => {
+  if (!state.file) return;
+  clearError();
+  document.getElementById('results').style.display = 'none';
+  setLoader(true);
+
+  const fd = new FormData();
+  fd.append('file', state.file);
+  if (state.mapping) fd.append('mapping', state.mapping);
+
+  try {
+    const res = await fetch('/anonymize', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) { showError(data.error || 'Erreur serveur'); return; }
+    renderResults(data);
+  } catch (e) {
+    showError('Impossible de joindre le serveur : ' + e.message);
+  } finally {
+    setLoader(false);
+  }
+});
+
+function renderResults(data) {
+  state.anonText = data.anonymized;
+  state.filename = data.filename;
+  state.mappingData = data.mapping;
+
+  // Badge méthode d'extraction
+  const methodEl = document.getElementById('extraction-method');
+  if (methodEl && data.method) {
+    methodEl.textContent = '⚙ ' + data.method;
+    methodEl.style.display = 'inline';
+  }
+
+  document.getElementById('original-text').textContent = data.original;
+  document.getElementById('anon-text').innerHTML = highlightTags(data.anonymized);
+
+  // Summary
+  const body = document.getElementById('summary-body');
+  body.innerHTML = '';
+  let total = 0;
+  for (const cat of data.summary) {
+    total += cat.items.length;
+    const div = document.createElement('div');
+    div.className = 'category-block';
+    const rows = cat.items.map(i =>
+      `<tr><td>${escHtml(i.tag)}</td><td>${escHtml(i.original)}</td></tr>`
+    ).join('');
+    div.innerHTML = `<h4>${escHtml(cat.category)}</h4><table>${rows}</table>`;
+    body.appendChild(div);
+  }
+  document.getElementById('summary-count').textContent =
+    total === 0 ? 'Aucune donnée sensible détectée' : `${total} élément(s) anonymisé(s)`;
+
+  document.getElementById('results').style.display = 'block';
+}
+
+/* ────────────────────────────────────────────
+   Dé-anonymiser — submit
+──────────────────────────────────────────── */
+document.getElementById('btn-deanonymize').addEventListener('click', async () => {
+  clearErrorDA();
+  document.getElementById('results-da').style.display = 'none';
+  setLoaderDA(true);
+
+  const fd = new FormData();
+  fd.append('file', stateDA.file);
+  fd.append('mapping', stateDA.mapping);
+
+  try {
+    const res = await fetch('/deanonymize', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) { showErrorDA(data.error || 'Erreur serveur'); return; }
+
+    stateDA.restoredText = data.anonymized;
+    stateDA.filename     = data.filename;
+
+    document.getElementById('original-text-da').innerHTML = highlightTags(data.original);
+    document.getElementById('anon-text-da').textContent = data.anonymized;
+    document.getElementById('results-da').style.display = 'block';
+  } catch (e) {
+    showErrorDA('Impossible de joindre le serveur : ' + e.message);
+  } finally {
+    setLoaderDA(false);
+  }
+});
+
+/* ────────────────────────────────────────────
+   Téléchargements
+──────────────────────────────────────────── */
+document.getElementById('btn-dl-anon').addEventListener('click', () => {
+  downloadText('/download', state.anonText, state.filename);
+});
+
+document.getElementById('btn-dl-mapping').addEventListener('click', () => {
+  downloadMapping(state.mappingData);
+});
+
+document.getElementById('btn-dl-da').addEventListener('click', () => {
+  downloadText('/download', stateDA.restoredText, stateDA.filename);
+});
+
+async function downloadText(url, content, filename) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content, filename }),
+  });
+  const blob = await res.blob();
+  triggerDownload(blob, filename);
+}
+
+async function downloadMapping(mapping) {
+  const res = await fetch('/download-mapping', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mapping }),
+  });
+  const blob = await res.blob();
+  triggerDownload(blob, 'mapping.json');
+}
+
+function triggerDownload(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/* ────────────────────────────────────────────
+   Utils
+──────────────────────────────────────────── */
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' o';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' Ko';
+  return (bytes / 1024 / 1024).toFixed(1) + ' Mo';
+}
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* init loader style */
+document.getElementById('loader').style.display = 'none';
+document.getElementById('loader-da').style.display = 'none';
+
+/* ────────────────────────────────────────────
+   Badge OCR dans le header + modale
+──────────────────────────────────────────── */
+function updateOcrBadge(d) {
+  const badge = document.getElementById('header-ocr-badge');
+  if (!badge) return;
+  if (d.ocr_available) {
+    badge.textContent = '✅ OCR actif';
+    badge.style.background = '#E6F7EE';
+    badge.style.color = '#1B7F4A';
+    badge.style.border = '1px solid #B2DFC7';
+  } else {
+    badge.textContent = '⚠️ OCR désactivé — Configurer';
+    badge.style.background = '#FFF8E6';
+    badge.style.color = '#92550A';
+    badge.style.border = '1px solid #F6D98A';
+  }
+  if (d.tesseract_path) {
+    document.getElementById('tesseract-path-input').value = d.tesseract_path;
+  }
+  // badge zone upload aussi
+  const b = document.getElementById('ocr-status-badge');
+  if (b) {
+    b.textContent = d.ocr_available ? '✅ ' + d.ocr_status : '⚠️ ' + d.ocr_status;
+    b.style.color  = d.ocr_available ? '#4ade80' : '#fbbf24';
+  }
+}
+
+fetch('/status').then(r => r.json()).then(d => updateOcrBadge(d)).catch(() => {});
+
+function openOcrModal()  { document.getElementById('ocr-modal').classList.add('open'); }
+function closeOcrModal() {
+  document.getElementById('ocr-modal').classList.remove('open');
+  document.getElementById('ocr-modal-msg').style.display = 'none';
+}
+
+// Fermer en cliquant hors de la modale
+document.getElementById('ocr-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeOcrModal();
+});
+
+async function saveTesseractPath() {
+  const path = document.getElementById('tesseract-path-input').value.trim();
+  const msg  = document.getElementById('ocr-modal-msg');
+  if (!path) { showModalMsg('Veuillez entrer un chemin.', false); return; }
+
+  const res  = await fetch('/set-tesseract', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path }),
+  });
+  const data = await res.json();
+
+  if (res.ok && data.success) {
+    showModalMsg('✔ Tesseract configuré avec succès ! ' + data.ocr_status, true);
+    updateOcrBadge({ ocr_available: true, ocr_status: data.ocr_status, tesseract_path: data.tesseract_path });
+    setTimeout(closeOcrModal, 2000);
+  } else {
+    showModalMsg('✘ ' + (data.error || 'Erreur inconnue'), false);
+  }
+}
+
+function showModalMsg(text, ok) {
+  const el = document.getElementById('ocr-modal-msg');
+  el.textContent = text;
+  el.className = 'msg ' + (ok ? 'ok' : 'err');
+  el.style.display = 'block';
+}
+</script>
+</body>
+</html>
