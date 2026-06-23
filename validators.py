@@ -12,7 +12,7 @@ import re
 def luhn_check(digits: str) -> bool:
     """Vérifie un numéro par l'algorithme de Luhn."""
     d = [int(c) for c in digits if c.isdigit()]
-    if len(d) < 12:
+    if len(d) < 9:
         return False
     if all(x == 0 for x in d):
         return False
@@ -71,12 +71,16 @@ def valid_nir(text: str) -> bool:
 
 def valid_siret(text: str) -> bool:
     digits = re.sub(r'\D', '', text)
-    return len(digits) == 14
+    if len(digits) != 14:
+        return False
+    return luhn_check(digits)
 
 
 def valid_siren(text: str) -> bool:
     digits = re.sub(r'\D', '', text)
-    return len(digits) == 9
+    if len(digits) != 9:
+        return False
+    return luhn_check(digits)
 
 
 VALIDATORS = {

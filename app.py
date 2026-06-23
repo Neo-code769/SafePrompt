@@ -18,6 +18,8 @@ import webbrowser
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
+from functools import wraps
+
 from flask import Flask, jsonify, render_template, request, send_file
 
 from anonymizer import Anonymizer
@@ -311,7 +313,24 @@ def download_mapping_encrypted():
 # Admin
 # ─────────────────────────────────────────────
 
+_ADMIN_KEY = os.environ.get("ANONYMISEUR_ADMIN_KEY", "").strip()
+
+
+def _admin_auth(f):
+    """Restreint les routes admin : localhost uniquement, ou clé via X-Admin-Key."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        remote = request.remote_addr or ""
+        if remote in ("127.0.0.1", "::1"):
+            return f(*args, **kwargs)
+        if _ADMIN_KEY and request.headers.get("X-Admin-Key") == _ADMIN_KEY:
+            return f(*args, **kwargs)
+        return jsonify(error="Accès refusé."), 403
+    return decorated
+
+
 @app.route("/admin/info")
+@_admin_auth
 def admin_info():
     log_size = LOG_FILE.stat().st_size if LOG_FILE.exists() else 0
     log_lines: list[str] = []
@@ -339,6 +358,7 @@ def admin_info():
 
 
 @app.route("/admin/purge-logs", methods=["POST"])
+@_admin_auth
 def admin_purge_logs():
     try:
         LOG_FILE.write_text("", encoding="utf-8")
@@ -349,6 +369,7 @@ def admin_purge_logs():
 
 
 @app.route("/admin/reset-config", methods=["POST"])
+@_admin_auth
 def admin_reset_config():
     try:
         cfg_path = config_file()

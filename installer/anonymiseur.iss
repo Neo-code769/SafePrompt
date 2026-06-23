@@ -3,7 +3,7 @@
 ; Genere : installer\Output\Anonymiseur-Setup.exe
 
 #define MyAppName      "Anonymiseur Action Telecom"
-#define MyAppVersion   "1.0.0"
+#define MyAppVersion   "1.1.0"
 #define MyAppPublisher "Action Telecom"
 #define MyAppExeName   "Anonymiseur.exe"
 #define MyAppURL       "https://www.actiontelecom.fr"
