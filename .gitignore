@@ -34,3 +34,6 @@ INCOGNITO/
 
 # Installer output
 installer/Output/
+
+# Bundled external binaries (téléchargés via setup_vendor.bat)
+vendor/
