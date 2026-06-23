@@ -20,7 +20,7 @@ except ImportError:
 # ── Tesseract portable embarqué ───────────────────────────
 # Place les binaires dans ./vendor/tesseract/ avant le build
 tesseract_datas = []
-vendor_tess = Path(__file__).parent / "vendor" / "tesseract"
+vendor_tess = Path(SPECPATH) / "vendor" / "tesseract"
 if (vendor_tess / "tesseract.exe").exists():
     tesseract_datas = [(str(vendor_tess), "tesseract")]
     print(f"[spec] Tesseract embarqué : {vendor_tess}")
@@ -68,7 +68,7 @@ a = Analysis(
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 # Icône (optionnelle) : place icon.ico à la racine
-icon_path = Path(__file__).parent / "icon.ico"
+icon_path = Path(SPECPATH) / "icon.ico"
 icon_arg = str(icon_path) if icon_path.exists() else None
 
 exe = EXE(
@@ -92,5 +92,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=icon_arg,
-    version="version_info.txt" if (Path(__file__).parent / "version_info.txt").exists() else None,
+    version="version_info.txt" if (Path(SPECPATH) / "version_info.txt").exists() else None,
 )

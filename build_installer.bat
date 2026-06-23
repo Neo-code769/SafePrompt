@@ -3,10 +3,13 @@ title Build Installer - Anonymiseur AT
 setlocal
 
 set ISCC="C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+if not exist %ISCC% set ISCC="C:\Program Files\Inno Setup 6\ISCC.exe"
+if not exist %ISCC% set ISCC="%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe"
 
 if not exist %ISCC% (
     echo [ERREUR] Inno Setup 6 non trouve.
     echo Telechargez : https://jrsoftware.org/isdl.php
+    echo Ou : winget install JRSoftware.InnoSetup
     pause
     exit /b 1
 )

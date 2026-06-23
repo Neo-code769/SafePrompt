@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Anonymiseur AT — Démarrage rapide</title>
+<style>
+  @page { size: A4; margin: 1.5cm; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: #222; max-width: 18cm; margin: auto; font-size: 11pt; line-height: 1.4; }
+  h1 { color: #0050a0; border-bottom: 2px solid #0050a0; padding-bottom: 4px; margin-bottom: 0; }
+  h1 + .sub { color: #666; font-size: 9pt; margin: 0 0 12px; }
+  h2 { color: #0050a0; font-size: 13pt; margin-top: 14px; margin-bottom: 4px; }
+  ol, ul { margin: 4px 0 8px 18px; padding: 0; }
+  li { margin-bottom: 2px; }
+  .box { border: 1px solid #ccc; border-left: 4px solid #0050a0; padding: 8px 12px; margin: 8px 0; background: #f6faff; }
+  .warn { border-left-color: #d97706; background: #fff7ed; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  code { background: #eee; padding: 1px 4px; border-radius: 3px; font-size: 10pt; }
+  table { border-collapse: collapse; width: 100%; font-size: 10pt; }
+  th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; }
+  th { background: #f0f4f8; }
+  .footer { font-size: 8pt; color: #888; margin-top: 16px; border-top: 1px solid #ddd; padding-top: 6px; }
+</style>
+</head>
+<body>
+
+<h1>Anonymiseur Action Telecom</h1>
+<p class="sub">Démarrage rapide — v1.0.0</p>
+
+<h2>À quoi ça sert ?</h2>
+<p>Avant de coller un extrait de log, ticket, email ou capture dans un assistant IA (ChatGPT, Claude…), passe-le dans cet outil. Il remplace les données sensibles (emails, IP, noms, IBAN, CB, numéros de sécu…) par des marqueurs. <strong>Aucune donnée ne sort de ton poste.</strong></p>
+
+<div class="box warn">
+Le mapping JSON contient les vraies valeurs : ne le partage pas, ne le mets pas dans un mail. Garde-le sur ton poste.
+</div>
+
+<h2>Lancement</h2>
+<ol>
+  <li>Menu Démarrer → <strong>Action Telecom → Anonymiseur</strong>.</li>
+  <li>Le navigateur s'ouvre tout seul sur <code>http://127.0.0.1:7777</code>.</li>
+  <li>La fenêtre console noire qui s'affiche : <strong>ne pas la fermer</strong>, c'est le moteur. Fermer = arrête l'outil.</li>
+</ol>
+
+<h2>Workflow standard</h2>
+<div class="grid">
+<div>
+<h2 style="margin-top:0">1. Anonymiser</h2>
+<ol>
+  <li>Glisse un fichier (.txt, .log, .pdf, image…).</li>
+  <li>Clique <strong>Anonymiser</strong>.</li>
+  <li>Copie le texte anonymisé → colle-le dans l'IA.</li>
+  <li>Télécharge le <code>mapping.json</code> (à garder si tu veux restaurer plus tard).</li>
+</ol>
+</div>
+<div>
+<h2 style="margin-top:0">2. Dé-anonymiser</h2>
+<ol>
+  <li>Récupère la réponse de l'IA.</li>
+  <li>Onglet <strong>Dé-anonymiser</strong>.</li>
+  <li>Colle la réponse + fournis le <code>mapping.json</code>.</li>
+  <li>Récupère le texte avec vraies valeurs.</li>
+</ol>
+</div>
+</div>
+
+<h2>Ce qui est détecté</h2>
+<table>
+<tr><th>Tag</th><th>Type</th><th>Tag</th><th>Type</th></tr>
+<tr><td><code>[EMAIL_n]</code></td><td>Adresse mail</td><td><code>[IBAN_n]</code></td><td>IBAN (validé)</td></tr>
+<tr><td><code>[IPv4_n]</code> / <code>[IPv6_n]</code></td><td>Adresse IP</td><td><code>[CB_n]</code></td><td>Carte bancaire (Luhn)</td></tr>
+<tr><td><code>[MAC_n]</code></td><td>Adresse MAC</td><td><code>[NIR_n]</code></td><td>N° sécu sociale</td></tr>
+<tr><td><code>[TEL_n]</code></td><td>Téléphone FR</td><td><code>[HOSTNAME_n]</code></td><td>Hostname interne</td></tr>
+<tr><td><code>[CODE_POSTAL_n]</code></td><td>Code postal</td><td><code>[PORT_n]</code></td><td>Port réseau</td></tr>
+<tr><td><code>[PERSONNE_n]</code></td><td>Nom / prénom</td><td><code>[ORGANISATION_n]</code></td><td>Société</td></tr>
+<tr><td><code>[LIEU_n]</code></td><td>Ville / adresse</td><td><code>[DIVERS_n]</code></td><td>Autre entité nommée</td></tr>
+</table>
+
+<h2>Problèmes fréquents</h2>
+<ul>
+  <li><strong>Le navigateur ne s'ouvre pas</strong> : ouvre-le manuellement sur <code>http://127.0.0.1:7777</code>. Si le port est occupé, regarde la console (le port effectif y est affiché).</li>
+  <li><strong>"Tesseract non détecté"</strong> : réinstalle l'Anonymiseur. Tesseract est embarqué dans l'installeur.</li>
+  <li><strong>PDF refusé "trop volumineux"</strong> : limite 50 pages pour l'OCR. Pour PDF natif (avec texte sélectionnable), pas de limite.</li>
+  <li><strong>L'outil n'a pas remplacé un nom</strong> : la détection NER n'est pas parfaite, surtout sur prénoms courts ou organisations rares. Relis le texte anonymisé avant envoi.</li>
+</ul>
+
+<h2>Données et confidentialité</h2>
+<ul>
+  <li>100 % local. Aucune connexion sortante. Aucune télémétrie.</li>
+  <li>Uploads en mémoire uniquement. Aucun fichier client n'est écrit sur disque.</li>
+  <li>Logs techniques (sans contenu) : <code>%LOCALAPPDATA%\ActionTelecom\Anonymiseur\logs\</code></li>
+</ul>
+
+<div class="footer">
+Support : équipe IT Action Telecom — Documentation complète : README.md livré avec l'installeur.
+</div>
+
+</body>
+</html>
