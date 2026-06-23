@@ -356,6 +356,24 @@
     .mapping-pw-row input[type=password]:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(107,47,217,.10); }
     .mapping-pw-row .hint { font-size: 0.74rem; color: var(--muted); white-space: nowrap; }
 
+    /* ── Session mapping banner ───────────────── */
+    .session-banner {
+      margin-top: 14px;
+      display: flex; align-items: center; gap: 12px;
+      background: #EFF6FF; border: 1px solid #BFDBFE;
+      border-left: 4px solid #3B82F6;
+      border-radius: var(--radius-sm); padding: 11px 16px;
+      font-size: 0.84rem; color: #1D4ED8;
+    }
+    .session-banner span { flex: 1; line-height: 1.55; }
+    .btn-clear-session {
+      padding: 5px 12px; border-radius: var(--radius-sm);
+      border: 1px solid #93C5FD; background: #DBEAFE;
+      color: #1D4ED8; font-size: 0.78rem; cursor: pointer;
+      transition: all .15s; white-space: nowrap;
+    }
+    .btn-clear-session:hover { background: #BFDBFE; }
+
     /* ── Admin ────────────────────────────────── */
     .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
     @media (max-width: 768px) { .admin-grid { grid-template-columns: 1fr; } }
@@ -551,6 +569,13 @@
       </div>
     </div>
 
+    <div class="session-banner" id="session-banner" style="display:none">
+      <span>⚡ Mapping de session chargé automatiquement —
+        <strong id="session-map-count">0</strong> élément(s) prêt(s) à restaurer.
+        Vous pouvez soumettre directement ou choisir un autre fichier mapping.</span>
+      <button class="btn-clear-session" onclick="clearSessionMapping()">✕ Effacer</button>
+    </div>
+
     <div class="mapping-pw-row" id="mapping-pw-da-row" style="display:none">
       <label for="mapping-pw-da">🔒 Mot de passe (mapping chiffré) :</label>
       <input type="password" id="mapping-pw-da" placeholder="Mot de passe" autocomplete="off" />
@@ -675,7 +700,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'admin') loadAdminInfo();
+    if (btn.dataset.tab === 'admin')  loadAdminInfo();
+    if (btn.dataset.tab === 'deanon') tryLoadSessionMapping();
   });
 });
 
@@ -782,6 +808,8 @@ let mappingIsEncrypted = false;
 
 document.getElementById('mapping-input-da').addEventListener('change', async function() {
   if (!this.files[0]) return;
+  // Fichier manuel → remplace le mapping de session
+  document.getElementById('session-banner').style.display = 'none';
   stateDA.mapping = this.files[0];
   document.getElementById('mapping-label-da').textContent = this.files[0].name;
   // Détection chiffrement
@@ -808,6 +836,7 @@ document.getElementById('btn-reset-da').addEventListener('click', () => {
   document.getElementById('mapping-label-da').textContent = 'Aucun';
   document.getElementById('mapping-pw-da-row').style.display = 'none';
   document.getElementById('mapping-pw-da').value = '';
+  document.getElementById('session-banner').style.display = 'none';
   document.getElementById('btn-deanonymize').disabled = true;
   document.getElementById('results-da').style.display = 'none';
   clearErrorDA();
@@ -838,10 +867,63 @@ document.getElementById('btn-anonymize').addEventListener('click', async () => {
   }
 });
 
+function saveSessionMapping(data) {
+  try {
+    sessionStorage.setItem('safeprompt_mapping', JSON.stringify({
+      mapping: data.mapping,
+      reverse_mapping: Object.fromEntries(
+        Object.entries(data.mapping).map(([k, v]) => [v, k])
+      ),
+      filename: data.filename,
+      count: Object.keys(data.mapping).length,
+    }));
+  } catch (e) {
+    console.warn('sessionStorage indisponible :', e);
+  }
+}
+
+function tryLoadSessionMapping() {
+  if (stateDA.mapping) return;
+  const raw = sessionStorage.getItem('safeprompt_mapping');
+  if (!raw) return;
+  try {
+    const saved = JSON.parse(raw);
+    if (!saved.mapping || Object.keys(saved.mapping).length === 0) return;
+    const blob = new Blob(
+      [JSON.stringify({ mapping: saved.mapping, reverse_mapping: saved.reverse_mapping }, null, 2)],
+      { type: 'application/json' }
+    );
+    stateDA.mapping = new File([blob], 'mapping-session.json', { type: 'application/json' });
+    mappingIsEncrypted = false;
+    document.getElementById('mapping-label-da').textContent = 'mapping de session';
+    document.getElementById('session-map-count').textContent = saved.count;
+    document.getElementById('session-banner').style.display = 'flex';
+    updateBtnDA();
+  } catch (e) {
+    console.warn('Lecture session mapping échouée :', e);
+  }
+}
+
+function clearSessionMapping() {
+  sessionStorage.removeItem('safeprompt_mapping');
+  clearSessionBanner();
+}
+
+function clearSessionBanner() {
+  stateDA.mapping = null;
+  document.getElementById('mapping-label-da').textContent = 'Aucun';
+  document.getElementById('session-banner').style.display = 'none';
+  document.getElementById('mapping-pw-da-row').style.display = 'none';
+  document.getElementById('mapping-pw-da').value = '';
+  mappingIsEncrypted = false;
+  updateBtnDA();
+}
+
 function renderResults(data) {
   state.anonText = data.anonymized;
   state.filename = data.filename;
   state.mappingData = data.mapping;
+  if (Object.keys(data.mapping).length > 0) saveSessionMapping(data);
 
   // Badge méthode d'extraction
   const methodEl = document.getElementById('extraction-method');
