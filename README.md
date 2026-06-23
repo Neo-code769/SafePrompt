@@ -1,3 +1,5 @@
+<img width="2357" height="1421" alt="Gemini_Generated_Image_ph1nniph1nniph1n(2)(1)(1)" src="https://github.com/user-attachments/assets/f6cf90f7-4245-4444-8fc0-060bc3a4b0fe" />
+
 # Anonymiseur de données sensibles — Action Telecom
 
 Outil d'anonymisation de textes, logs, PDF et images avant soumission à un service d'IA externe (ChatGPT, Claude, Mistral, etc.). Traitement 100 % local ou intranet — aucune donnée ne sort du SI.
