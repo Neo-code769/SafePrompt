@@ -72,6 +72,15 @@ PATTERNS = {
         r'\b(?:[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?\.)+(?:local|lan|intranet|internal|corp|home)\b',
         re.IGNORECASE
     ),
+    "SIRET": re.compile(                        # SIRET 14 chiffres (avec ou sans keyword)
+        r'(?i)(?:'
+        r'siret\s*[:=\-]?\s*(?:\d{3}[\s.\-]?\d{3}[\s.\-]?\d{3}[\s.\-]?\d{5}|\d{14})'
+        r'|\b\d{3}[\s.]\d{3}[\s.]\d{3}[\s.]\d{5}\b'
+        r')'
+    ),
+    "SIREN": re.compile(                        # SIREN 9 chiffres (keyword obligatoire)
+        r'(?i)siren\s*[:=\-]?\s*\d{3}[\s.\-]?\d{3}[\s.\-]?\d{3}\b'
+    ),
 }
 
 
@@ -180,6 +189,8 @@ class Anonymizer:
             ("PAN",          "CB"),
             ("NIR",          "NIR"),
             ("IBAN",         "IBAN"),
+            ("SIRET",        "SIRET"),
+            ("SIREN",        "SIREN"),
             ("EMAIL",        "EMAIL"),
             ("MAC",          "MAC"),
             ("IPv6",         "IPv6"),

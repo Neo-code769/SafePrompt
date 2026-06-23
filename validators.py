@@ -69,8 +69,20 @@ def valid_nir(text: str) -> bool:
     return expected == key
 
 
+def valid_siret(text: str) -> bool:
+    digits = re.sub(r'\D', '', text)
+    return len(digits) == 14
+
+
+def valid_siren(text: str) -> bool:
+    digits = re.sub(r'\D', '', text)
+    return len(digits) == 9
+
+
 VALIDATORS = {
     "CB": valid_pan,
     "IBAN": valid_iban,
     "NIR": valid_nir,
+    "SIRET": valid_siret,
+    "SIREN": valid_siren,
 }

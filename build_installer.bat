@@ -29,7 +29,12 @@ if errorlevel 1 (
 )
 
 echo.
+echo Calcul du hash SHA-256...
+python -c "import hashlib,glob,pathlib; files=glob.glob('installer/Output/Anonymiseur-Setup-*.exe'); [open('installer/Output/SHA256SUMS.txt','w').write(hashlib.sha256(pathlib.Path(f).read_bytes()).hexdigest()+'  '+pathlib.Path(f).name+'\n') or print('SHA256: '+hashlib.sha256(pathlib.Path(f).read_bytes()).hexdigest()+'  '+pathlib.Path(f).name) for f in files]"
+
+echo.
 echo ==============================================
 echo   Installeur cree : installer\Output\
+echo   Hash SHA-256    : installer\Output\SHA256SUMS.txt
 echo ==============================================
 pause

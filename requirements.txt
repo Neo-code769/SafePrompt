@@ -4,6 +4,7 @@ pypdf>=4.0
 pymupdf>=1.23
 pytesseract>=0.3
 Pillow>=10.0
+cryptography>=42.0
 pyinstaller>=6.0
 pyinstaller-hooks-contrib>=2024.0
 pytest>=8.0

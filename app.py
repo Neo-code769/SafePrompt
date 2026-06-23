@@ -21,8 +21,9 @@ from pathlib import Path
 from flask import Flask, jsonify, render_template, request, send_file
 
 from anonymizer import Anonymizer
+import crypto as crypto_module
 import ocr as ocr_module
-from paths import bundled_resource, logs_dir
+from paths import bundled_resource, logs_dir, config_file
 
 # ─────────────────────────────────────────────
 # Logging
@@ -225,6 +226,22 @@ def deanonymize():
         return jsonify(error=str(e)), 422
 
     raw_map = request.files["mapping"].read()
+
+    # Déchiffrement si mapping chiffré
+    try:
+        map_json = json.loads(raw_map)
+        if crypto_module.is_encrypted(map_json):
+            password = request.form.get("password", "")
+            if not password:
+                return jsonify(error="Ce mapping est chiffré. Fournissez le mot de passe."), 422
+            try:
+                map_json = crypto_module.decrypt_mapping(map_json, password)
+                raw_map = json.dumps(map_json, ensure_ascii=False).encode("utf-8")
+            except Exception:
+                return jsonify(error="Mot de passe incorrect ou mapping corrompu."), 422
+    except (json.JSONDecodeError, ValueError):
+        pass  # fichier non-JSON, l'Anonymizer tentera de le charger normalement
+
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="wb")
     tmp.write(raw_map)
     tmp.close()
@@ -268,6 +285,79 @@ def download_mapping():
     buf.seek(0)
     return send_file(buf, as_attachment=True, download_name="mapping.json",
                      mimetype="application/json")
+
+
+@app.route("/download-mapping-encrypted", methods=["POST"])
+def download_mapping_encrypted():
+    data = request.get_json(force=True)
+    mapping = data.get("mapping", {})
+    password = data.get("password", "")
+    if not password:
+        return jsonify(error="Mot de passe requis pour le chiffrement."), 400
+    full_map = {"mapping": mapping, "reverse_mapping": {v: k for k, v in mapping.items()}}
+    try:
+        enc = crypto_module.encrypt_mapping(full_map, password)
+    except Exception as e:
+        log.error("Chiffrement mapping échoué : %s", e)
+        return jsonify(error="Erreur de chiffrement."), 500
+    content = json.dumps(enc, ensure_ascii=False, indent=2)
+    buf = io.BytesIO(content.encode("utf-8"))
+    buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name="mapping.encrypted.json",
+                     mimetype="application/json")
+
+
+# ─────────────────────────────────────────────
+# Admin
+# ─────────────────────────────────────────────
+
+@app.route("/admin/info")
+def admin_info():
+    log_size = LOG_FILE.stat().st_size if LOG_FILE.exists() else 0
+    log_lines: list[str] = []
+    if LOG_FILE.exists():
+        try:
+            with open(LOG_FILE, encoding="utf-8", errors="replace") as f:
+                log_lines = [l.rstrip() for l in f.readlines()[-100:]]
+        except Exception:
+            pass
+    cfg: dict = {}
+    cfg_path = config_file()
+    try:
+        if cfg_path.exists():
+            cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return jsonify(
+        log_path=str(LOG_FILE),
+        log_size=log_size,
+        log_lines=log_lines,
+        config_path=str(cfg_path),
+        config=cfg,
+        version=Path("VERSION").read_text(encoding="utf-8").strip() if Path("VERSION").exists() else "?",
+    )
+
+
+@app.route("/admin/purge-logs", methods=["POST"])
+def admin_purge_logs():
+    try:
+        LOG_FILE.write_text("", encoding="utf-8")
+        log.info("Logs purgés via interface admin")
+        return jsonify(success=True)
+    except Exception as e:
+        return jsonify(error=str(e)), 500
+
+
+@app.route("/admin/reset-config", methods=["POST"])
+def admin_reset_config():
+    try:
+        cfg_path = config_file()
+        if cfg_path.exists():
+            cfg_path.unlink()
+        log.info("Config réinitialisée via interface admin")
+        return jsonify(success=True)
+    except Exception as e:
+        return jsonify(error=str(e)), 500
 
 
 # ─────────────────────────────────────────────

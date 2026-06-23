@@ -327,6 +327,72 @@
       border-radius: var(--radius-sm); padding: 12px 16px;
       color: #c62828; font-size: .87rem;
     }
+
+    /* ── Copy button ──────────────────────────── */
+    .btn-copy {
+      padding: 4px 10px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: transparent;
+      color: var(--muted); font-size: 0.75rem; cursor: pointer;
+      transition: all .15s; white-space: nowrap;
+    }
+    .btn-copy:hover { border-color: var(--purple); color: var(--purple); background: var(--purple-lt); }
+    .btn-copy.copied { background: #E6F7EE; color: #1B7F4A; border-color: #B2DFC7; }
+
+    /* ── Mapping password row ─────────────────── */
+    .mapping-pw-row {
+      margin-top: 10px;
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 14px;
+      box-shadow: var(--shadow);
+    }
+    .mapping-pw-row label { font-size: 0.82rem; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+    .mapping-pw-row input[type=password] {
+      flex: 1; padding: 6px 10px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-size: 0.84rem; outline: none;
+      transition: border-color .15s;
+    }
+    .mapping-pw-row input[type=password]:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(107,47,217,.10); }
+    .mapping-pw-row .hint { font-size: 0.74rem; color: var(--muted); white-space: nowrap; }
+
+    /* ── Admin ────────────────────────────────── */
+    .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+    @media (max-width: 768px) { .admin-grid { grid-template-columns: 1fr; } }
+    .admin-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+    }
+    .admin-card-header {
+      padding: 12px 18px; border-bottom: 1px solid var(--border);
+      background: #FAFBFC; font-size: 0.85rem; font-weight: 700; color: var(--text);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .admin-card-body { padding: 16px 18px; }
+    .admin-info-row {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 7px 0; border-bottom: 1px solid #f3f4f6; font-size: 0.83rem;
+    }
+    .admin-info-row:last-child { border-bottom: none; }
+    .admin-info-row .key { color: var(--muted); flex-shrink: 0; padding-right: 10px; }
+    .admin-info-row .val { color: var(--text); font-family: monospace; font-size: 0.78rem; text-align: right; word-break: break-all; }
+    .log-viewer {
+      background: #1e1e2e; border-radius: var(--radius-sm);
+      padding: 12px 14px; font-family: 'Cascadia Code','Consolas',monospace; font-size: 0.74rem;
+      color: #a6adc8; line-height: 1.6; max-height: 320px; overflow-y: auto;
+      white-space: pre-wrap; word-break: break-word;
+      border: 1px solid #313244;
+    }
+    .log-viewer::-webkit-scrollbar { width: 5px; }
+    .log-viewer::-webkit-scrollbar-thumb { background: #45475a; border-radius: 3px; }
+    .btn-danger {
+      padding: 8px 18px; border-radius: var(--radius-sm);
+      background: #fee2e2; border: 1px solid #fca5a5;
+      color: #dc2626; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; transition: all .15s;
+    }
+    .btn-danger:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
+    .admin-action-msg { font-size: .8rem; margin-top: 8px; display: none; }
   </style>
 </head>
 <body>
@@ -381,6 +447,7 @@
   <div class="tabs">
     <button class="tab-btn active" data-tab="anon">Anonymiser</button>
     <button class="tab-btn" data-tab="deanon">Dé-anonymiser</button>
+    <button class="tab-btn" data-tab="admin">⚙ Admin</button>
   </div>
 
   <!-- ══════════════════════════════════════════ -->
@@ -430,7 +497,10 @@
         <div class="result-card">
           <div class="result-card-header">
             <span>Texte anonymisé</span>
-            <div class="badge badge-anon">ANONYMISÉ</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="btn-copy" id="btn-copy-anon" onclick="copyEl('anon-text','btn-copy-anon')">📋 Copier</button>
+              <div class="badge badge-anon">ANONYMISÉ</div>
+            </div>
           </div>
           <div class="result-text" id="anon-text"></div>
         </div>
@@ -447,6 +517,12 @@
       <div class="download-bar">
         <button class="btn-primary" id="btn-dl-anon">⬇ Télécharger le fichier anonymisé</button>
         <button class="btn-secondary" id="btn-dl-mapping">⬇ Télécharger mapping.json</button>
+        <button class="btn-copy" id="btn-copy-anon2" onclick="copyEl('anon-text','btn-copy-anon2')" style="padding:8px 14px;font-size:.84rem">📋 Copier le texte</button>
+      </div>
+      <div class="mapping-pw-row">
+        <label for="mapping-pw">🔒 Chiffrer le mapping :</label>
+        <input type="password" id="mapping-pw" placeholder="Mot de passe (laisser vide = non chiffré)" autocomplete="new-password" />
+        <span class="hint">AES-256-GCM</span>
       </div>
     </div>
 
@@ -475,6 +551,11 @@
       </div>
     </div>
 
+    <div class="mapping-pw-row" id="mapping-pw-da-row" style="display:none">
+      <label for="mapping-pw-da">🔒 Mot de passe (mapping chiffré) :</label>
+      <input type="password" id="mapping-pw-da" placeholder="Mot de passe" autocomplete="off" />
+    </div>
+
     <div class="actions">
       <button class="btn-primary" id="btn-deanonymize" disabled>🔓 Dé-anonymiser</button>
       <button class="btn-secondary" id="btn-reset-da">Réinitialiser</button>
@@ -495,13 +576,63 @@
         <div class="result-card">
           <div class="result-card-header">
             <span>Texte restauré</span>
-            <div class="badge badge-original">RESTAURÉ</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="btn-copy" id="btn-copy-da" onclick="copyEl('anon-text-da','btn-copy-da')">📋 Copier</button>
+              <div class="badge badge-original">RESTAURÉ</div>
+            </div>
           </div>
           <div class="result-text" id="anon-text-da"></div>
         </div>
       </div>
       <div class="download-bar">
         <button class="btn-primary" id="btn-dl-da">⬇ Télécharger le fichier restauré</button>
+        <button class="btn-copy" id="btn-copy-da2" onclick="copyEl('anon-text-da','btn-copy-da2')" style="padding:8px 14px;font-size:.84rem">📋 Copier le texte</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- TAB : ADMIN                                -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-admin">
+
+    <div class="admin-grid">
+      <div class="admin-card">
+        <div class="admin-card-header">📊 Informations système</div>
+        <div class="admin-card-body" id="admin-info-body">
+          <div style="color:var(--muted);font-size:.85rem">Chargement…</div>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <div class="admin-card-header">🛠️ Maintenance</div>
+        <div class="admin-card-body">
+          <p style="font-size:.83rem;color:var(--muted);margin-bottom:16px;line-height:1.65">
+            Purgez les logs ou réinitialisez la configuration (chemin Tesseract, etc.).
+            La réinitialisation nécessite un redémarrage de l'application.
+          </p>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div>
+              <button class="btn-danger" onclick="adminPurgeLogs()">🗑️ Purger les logs</button>
+              <div class="admin-action-msg" id="admin-purge-msg"></div>
+            </div>
+            <div>
+              <button class="btn-danger" onclick="adminResetConfig()">↩️ Réinitialiser la config</button>
+              <div class="admin-action-msg" id="admin-reset-msg"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-card-header">
+        <span>📄 Logs récents (100 dernières lignes)</span>
+        <button class="btn-ghost" onclick="loadAdminInfo()" style="font-size:.78rem;padding:4px 10px">↻ Rafraîchir</button>
+      </div>
+      <div class="admin-card-body">
+        <div class="log-viewer" id="admin-log-viewer">Chargement…</div>
       </div>
     </div>
 
@@ -544,6 +675,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'admin') loadAdminInfo();
   });
 });
 
@@ -646,12 +778,22 @@ function setFileDA(f) {
   updateBtnDA();
 }
 
-document.getElementById('mapping-input-da').addEventListener('change', function() {
-  if (this.files[0]) {
-    stateDA.mapping = this.files[0];
-    document.getElementById('mapping-label-da').textContent = this.files[0].name;
-    updateBtnDA();
+let mappingIsEncrypted = false;
+
+document.getElementById('mapping-input-da').addEventListener('change', async function() {
+  if (!this.files[0]) return;
+  stateDA.mapping = this.files[0];
+  document.getElementById('mapping-label-da').textContent = this.files[0].name;
+  // Détection chiffrement
+  try {
+    const txt = await this.files[0].text();
+    const parsed = JSON.parse(txt);
+    mappingIsEncrypted = parsed.encrypted === true;
+  } catch {
+    mappingIsEncrypted = false;
   }
+  document.getElementById('mapping-pw-da-row').style.display = mappingIsEncrypted ? 'flex' : 'none';
+  updateBtnDA();
 });
 
 function updateBtnDA() {
@@ -659,11 +801,13 @@ function updateBtnDA() {
 }
 
 document.getElementById('btn-reset-da').addEventListener('click', () => {
-  stateDA.file = null; stateDA.mapping = null;
+  stateDA.file = null; stateDA.mapping = null; mappingIsEncrypted = false;
   fileInputDA.value = '';
   document.getElementById('mapping-input-da').value = '';
   document.getElementById('file-label-da').textContent = '';
   document.getElementById('mapping-label-da').textContent = 'Aucun';
+  document.getElementById('mapping-pw-da-row').style.display = 'none';
+  document.getElementById('mapping-pw-da').value = '';
   document.getElementById('btn-deanonymize').disabled = true;
   document.getElementById('results-da').style.display = 'none';
   clearErrorDA();
@@ -740,6 +884,11 @@ document.getElementById('btn-deanonymize').addEventListener('click', async () =>
   const fd = new FormData();
   fd.append('file', stateDA.file);
   fd.append('mapping', stateDA.mapping);
+  if (mappingIsEncrypted) {
+    const pw = document.getElementById('mapping-pw-da').value;
+    if (!pw) { showErrorDA('Entrez le mot de passe du mapping chiffré.'); setLoaderDA(false); return; }
+    fd.append('password', pw);
+  }
 
   try {
     const res = await fetch('/deanonymize', { method: 'POST', body: fd });
@@ -767,7 +916,8 @@ document.getElementById('btn-dl-anon').addEventListener('click', () => {
 });
 
 document.getElementById('btn-dl-mapping').addEventListener('click', () => {
-  downloadMapping(state.mappingData);
+  const pw = (document.getElementById('mapping-pw')?.value || '').trim();
+  downloadMapping(state.mappingData, pw);
 });
 
 document.getElementById('btn-dl-da').addEventListener('click', () => {
@@ -784,14 +934,29 @@ async function downloadText(url, content, filename) {
   triggerDownload(blob, filename);
 }
 
-async function downloadMapping(mapping) {
-  const res = await fetch('/download-mapping', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mapping }),
-  });
-  const blob = await res.blob();
-  triggerDownload(blob, 'mapping.json');
+async function downloadMapping(mapping, password) {
+  if (password) {
+    const res = await fetch('/download-mapping-encrypted', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mapping, password }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      alert('Erreur chiffrement : ' + (d.error || res.status));
+      return;
+    }
+    const blob = await res.blob();
+    triggerDownload(blob, 'mapping.encrypted.json');
+  } else {
+    const res = await fetch('/download-mapping', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mapping }),
+    });
+    const blob = await res.blob();
+    triggerDownload(blob, 'mapping.json');
+  }
 }
 
 function triggerDownload(blob, filename) {
@@ -812,6 +977,81 @@ function formatSize(bytes) {
 }
 function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ────────────────────────────────────────────
+   Copier dans le presse-papier
+──────────────────────────────────────────── */
+async function copyEl(elId, btnId) {
+  const el = document.getElementById(elId);
+  const btn = document.getElementById(btnId);
+  const text = el.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement('textarea');
+    Object.assign(ta.style, { position: 'fixed', opacity: '0' });
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copié !';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+  }
+}
+
+/* ────────────────────────────────────────────
+   Admin
+──────────────────────────────────────────── */
+function loadAdminInfo() {
+  fetch('/admin/info').then(r => r.json()).then(d => {
+    const sizeFmt = d.log_size < 1024 ? d.log_size + ' o'
+      : d.log_size < 1_048_576 ? (d.log_size / 1024).toFixed(1) + ' Ko'
+      : (d.log_size / 1_048_576).toFixed(2) + ' Mo';
+    document.getElementById('admin-info-body').innerHTML =
+      row('Version', d.version) +
+      row('Fichier log', d.log_path) +
+      row('Taille logs', sizeFmt) +
+      row('Config', d.config_path) +
+      row('Tesseract', d.config.tesseract_path || 'détection auto');
+    const viewer = document.getElementById('admin-log-viewer');
+    viewer.textContent = d.log_lines.join('\n') || '(aucun log)';
+    viewer.scrollTop = viewer.scrollHeight;
+  }).catch(() => {
+    document.getElementById('admin-info-body').innerHTML =
+      '<div style="color:#dc2626;font-size:.83rem">Erreur de chargement</div>';
+  });
+}
+function row(k, v) {
+  return `<div class="admin-info-row"><span class="key">${escHtml(k)}</span><span class="val">${escHtml(String(v ?? ''))}</span></div>`;
+}
+
+async function adminPurgeLogs() {
+  if (!confirm('Supprimer tous les logs applicatifs ?')) return;
+  const res = await fetch('/admin/purge-logs', { method: 'POST' });
+  showAdminMsg('admin-purge-msg', res.ok ? '✅ Logs purgés.' : '✘ Erreur.', res.ok);
+  if (res.ok) loadAdminInfo();
+}
+
+async function adminResetConfig() {
+  if (!confirm('Réinitialiser la configuration (chemin Tesseract, etc.) ?\nL\'application devra être redémarrée.')) return;
+  const res = await fetch('/admin/reset-config', { method: 'POST' });
+  showAdminMsg('admin-reset-msg',
+    res.ok ? '✅ Config réinitialisée — redémarrez l\'application.' : '✘ Erreur.',
+    res.ok);
+}
+
+function showAdminMsg(id, text, ok) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.style.color = ok ? '#1B7F4A' : '#dc2626';
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
 
 /* init loader style */
