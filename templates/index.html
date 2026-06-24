@@ -387,6 +387,55 @@
       display: flex; align-items: center; justify-content: space-between;
     }
     .admin-card-body { padding: 16px 18px; }
+    .categories-block {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px 18px; margin: 18px 0; box-shadow: var(--shadow);
+    }
+    .categories-block summary {
+      cursor: pointer; font-weight: 600; color: var(--text);
+      font-size: 0.92rem; user-select: none; display: flex; align-items: center; gap: 10px;
+    }
+    .categories-block summary::marker { color: var(--purple); }
+    .cat-badge {
+      background: var(--purple-lt); color: var(--purple-dk);
+      padding: 2px 10px; border-radius: 12px; font-size: 0.72rem; font-weight: 600;
+    }
+    .categories-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 8px 14px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+    }
+    .cat-toggle {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.84rem; color: var(--text); cursor: pointer;
+      padding: 4px 6px; border-radius: 6px;
+    }
+    .cat-toggle:hover { background: var(--bg); }
+    .cat-toggle input { accent-color: var(--purple); cursor: pointer; }
+    .categories-actions {
+      display: flex; gap: 10px; align-items: center;
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+    }
+    .btn-ghost-sm {
+      background: transparent; border: 1px solid var(--border); color: var(--muted);
+      padding: 4px 12px; border-radius: 6px; font-size: 0.78rem; cursor: pointer;
+      transition: all .15s;
+    }
+    .btn-ghost-sm:hover { border-color: var(--purple); color: var(--purple); }
+    .cat-status { font-size: 0.78rem; color: var(--muted); margin-left: auto; }
+    .cat-status.ok { color: #1B7F4A; }
+    .cat-status.err { color: #e53935; }
+    .wl-help {
+      font-size: 0.78rem; color: var(--muted); margin: 10px 0 8px;
+      padding-top: 10px; border-top: 1px solid var(--border);
+    }
+    .wl-textarea {
+      width: 100%; min-height: 100px; padding: 10px 12px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      font-family: 'Consolas', 'Courier New', monospace; font-size: 0.84rem;
+      color: var(--text); background: var(--surface); resize: vertical;
+    }
+    .wl-textarea:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 0 2px var(--purple-lt); }
+
     .admin-info-row {
       display: flex; justify-content: space-between; align-items: flex-start;
       padding: 7px 0; border-bottom: 1px solid #f3f4f6; font-size: 0.83rem;
@@ -493,6 +542,29 @@
         Choisir mapping.json
       </div>
     </div>
+
+    <details class="categories-block" id="categories-block">
+      <summary>⚙️ Catégories à anonymiser <span id="cat-summary-count" class="cat-badge"></span></summary>
+      <div class="categories-grid" id="categories-grid">Chargement…</div>
+      <div class="categories-actions">
+        <button type="button" class="btn-ghost-sm" onclick="setAllCategories(true)">Tout activer</button>
+        <button type="button" class="btn-ghost-sm" onclick="setAllCategories(false)">Tout désactiver</button>
+        <span id="cat-save-status" class="cat-status"></span>
+      </div>
+    </details>
+
+    <details class="categories-block" id="whitelist-block">
+      <summary>🛡️ Liste blanche NER <span id="wl-count" class="cat-badge"></span></summary>
+      <p class="wl-help">
+        Termes à ne jamais anonymiser (noms d'entreprises clientes connues, marques, produits…).
+        Une entrée par ligne. Insensible à la casse, comparaison avec limites de mot.
+      </p>
+      <textarea id="ner-whitelist-input" class="wl-textarea" rows="6"
+                placeholder="Action Telecom&#10;Microsoft&#10;Sophos"></textarea>
+      <div class="categories-actions">
+        <span id="wl-save-status" class="cat-status"></span>
+      </div>
+    </details>
 
     <div class="actions">
       <button class="btn-primary" id="btn-anonymize" disabled>🔒 Anonymiser</button>
@@ -1208,6 +1280,161 @@ function showModalMsg(text, ok) {
   el.className = 'msg ' + (ok ? 'ok' : 'err');
   el.style.display = 'block';
 }
+
+/* ────────────────────────────────────────────
+   Catégories — chargement + persistance
+──────────────────────────────────────────── */
+
+const CATEGORY_LABELS = {
+  CB: 'Carte bancaire', NIR: 'N° sécu', IBAN: 'IBAN', SIRET: 'SIRET', SIREN: 'SIREN',
+  EMAIL: 'E-mail', MAC: 'Adresse MAC', IPv4: 'IPv4', IPv6: 'IPv6',
+  TEL: 'Téléphone', HOSTNAME: 'Hostname', CODE_POSTAL: 'Code postal',
+  PORT: 'Port réseau', DATE_NAISSANCE: 'Date de naissance',
+  PERSONNE: 'Personne (NER)', ORGANISATION: 'Organisation (NER)',
+  LIEU: 'Lieu (NER)', DIVERS: 'Divers (NER)',
+};
+
+let categoriesState = { all: [], disabled: new Set() };
+
+async function loadCategories() {
+  try {
+    const res = await fetch('/categories');
+    const data = await res.json();
+    categoriesState.all = data.all || [];
+    categoriesState.disabled = new Set(data.disabled || []);
+    renderCategories();
+  } catch (e) {
+    document.getElementById('categories-grid').textContent = 'Erreur de chargement : ' + e.message;
+  }
+}
+
+function renderCategories() {
+  const grid = document.getElementById('categories-grid');
+  grid.innerHTML = '';
+  for (const cat of categoriesState.all) {
+    const label = document.createElement('label');
+    label.className = 'cat-toggle';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = cat;
+    cb.checked = !categoriesState.disabled.has(cat);
+    cb.addEventListener('change', onCategoryToggle);
+    const txt = document.createElement('span');
+    txt.textContent = CATEGORY_LABELS[cat] || cat;
+    label.appendChild(cb);
+    label.appendChild(txt);
+    grid.appendChild(label);
+  }
+  updateCategorySummary();
+}
+
+function updateCategorySummary() {
+  const total = categoriesState.all.length;
+  const active = total - categoriesState.disabled.size;
+  const badge = document.getElementById('cat-summary-count');
+  badge.textContent = `${active}/${total} actives`;
+}
+
+let saveTimer = null;
+function onCategoryToggle(e) {
+  if (e.target.checked) categoriesState.disabled.delete(e.target.value);
+  else categoriesState.disabled.add(e.target.value);
+  updateCategorySummary();
+  setSaveStatus('Enregistrement…', '');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveCategories, 400);
+}
+
+async function saveCategories() {
+  try {
+    const res = await fetch('/categories', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({disabled: [...categoriesState.disabled]}),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur');
+    setSaveStatus('✓ Enregistré', 'ok');
+    setTimeout(() => setSaveStatus('', ''), 1500);
+  } catch (e) {
+    setSaveStatus('✘ ' + e.message, 'err');
+  }
+}
+
+function setSaveStatus(text, cls) {
+  const el = document.getElementById('cat-save-status');
+  el.textContent = text;
+  el.className = 'cat-status ' + cls;
+}
+
+function setAllCategories(active) {
+  if (active) categoriesState.disabled.clear();
+  else categoriesState.disabled = new Set(categoriesState.all);
+  for (const cb of document.querySelectorAll('#categories-grid input[type=checkbox]')) {
+    cb.checked = !categoriesState.disabled.has(cb.value);
+  }
+  updateCategorySummary();
+  saveCategories();
+}
+
+document.addEventListener('DOMContentLoaded', loadCategories);
+
+/* ────────────────────────────────────────────
+   NER whitelist
+──────────────────────────────────────────── */
+
+let wlSaveTimer = null;
+
+async function loadNerWhitelist() {
+  try {
+    const res = await fetch('/ner-whitelist');
+    const data = await res.json();
+    const list = data.whitelist || [];
+    document.getElementById('ner-whitelist-input').value = list.join('\n');
+    updateWlCount(list.length);
+  } catch (e) {
+    setWlStatus('Erreur chargement : ' + e.message, 'err');
+  }
+}
+
+function updateWlCount(n) {
+  document.getElementById('wl-count').textContent = n + ' entrée' + (n > 1 ? 's' : '');
+}
+
+function setWlStatus(text, cls) {
+  const el = document.getElementById('wl-save-status');
+  el.textContent = text;
+  el.className = 'cat-status ' + cls;
+}
+
+async function saveNerWhitelist() {
+  const raw = document.getElementById('ner-whitelist-input').value;
+  const items = raw.split('\n').map(s => s.trim()).filter(Boolean);
+  try {
+    const res = await fetch('/ner-whitelist', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({whitelist: items}),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur');
+    updateWlCount((data.whitelist || []).length);
+    setWlStatus('✓ Enregistré', 'ok');
+    setTimeout(() => setWlStatus('', ''), 1500);
+  } catch (e) {
+    setWlStatus('✘ ' + e.message, 'err');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadNerWhitelist();
+  const ta = document.getElementById('ner-whitelist-input');
+  ta.addEventListener('input', () => {
+    setWlStatus('Enregistrement…', '');
+    clearTimeout(wlSaveTimer);
+    wlSaveTimer = setTimeout(saveNerWhitelist, 700);
+  });
+});
 </script>
 </body>
 </html>

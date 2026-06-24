@@ -5,6 +5,7 @@ Action Telecom — usage local par poste.
 Lance : python app.py  →  http://127.0.0.1:<port>
 """
 
+import hashlib
 import io
 import json
 import logging
@@ -15,17 +16,17 @@ import sys
 import tempfile
 import threading
 import webbrowser
+from collections import OrderedDict
+from functools import wraps
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-from functools import wraps
-
 from flask import Flask, jsonify, render_template, request, send_file
 
-from anonymizer import Anonymizer
 import crypto as crypto_module
 import ocr as ocr_module
-from paths import bundled_resource, logs_dir, config_file
+from anonymizer import Anonymizer
+from paths import bundled_resource, config_file, logs_dir
 
 # ─────────────────────────────────────────────
 # Logging
@@ -55,6 +56,92 @@ app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 Mo max
 app.config["SECRET_KEY"] = secrets.token_hex(32)  # régénéré à chaque démarrage (local)
 
 DEFAULT_PORT = 7777
+
+# ─────────────────────────────────────────────
+# Cache LRU anonymisation (par hash texte + mapping + catégories)
+# ─────────────────────────────────────────────
+
+_CACHE_MAX = int(os.environ.get("ANONYMISEUR_CACHE_SIZE", "32"))
+_anon_cache: "OrderedDict[str, dict]" = OrderedDict()
+_cache_lock = threading.Lock()
+
+
+def _cache_key(
+    text: str,
+    mapping_raw: bytes,
+    disabled_cats: tuple[str, ...],
+    whitelist: tuple[str, ...],
+) -> str:
+    h = hashlib.sha256()
+    h.update(text.encode("utf-8"))
+    h.update(b"\0")
+    h.update(mapping_raw)
+    h.update(b"\0")
+    h.update("|".join(disabled_cats).encode("utf-8"))
+    h.update(b"\0")
+    h.update("|".join(whitelist).encode("utf-8"))
+    return h.hexdigest()
+
+
+def _cache_get(key: str) -> dict | None:
+    with _cache_lock:
+        entry = _anon_cache.get(key)
+        if entry is not None:
+            _anon_cache.move_to_end(key)
+        return entry
+
+
+def _cache_put(key: str, value: dict) -> None:
+    with _cache_lock:
+        _anon_cache[key] = value
+        _anon_cache.move_to_end(key)
+        while len(_anon_cache) > _CACHE_MAX:
+            _anon_cache.popitem(last=False)
+
+
+# ─────────────────────────────────────────────
+# Catégories actives (config persistant)
+# ─────────────────────────────────────────────
+
+ALL_CATEGORIES = [
+    "CB", "NIR", "IBAN", "SIRET", "SIREN", "EMAIL", "MAC", "IPv6", "IPv4",
+    "TEL", "HOSTNAME", "CODE_POSTAL", "PORT", "DATE_NAISSANCE",
+    "PERSONNE", "ORGANISATION", "LIEU", "DIVERS",
+]
+
+
+def _read_config() -> dict:
+    try:
+        path = config_file()
+        if path.exists():
+            return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as e:
+        log.warning("Lecture config échouée : %s", e)
+    return {}
+
+
+def _write_config(cfg: dict) -> None:
+    path = config_file()
+    path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _get_disabled_categories() -> tuple[str, ...]:
+    cfg = _read_config()
+    return tuple(sorted(cfg.get("disabled_categories", [])))
+
+
+def _get_ner_whitelist() -> tuple[str, ...]:
+    cfg = _read_config()
+    raw = cfg.get("ner_whitelist", [])
+    if not isinstance(raw, list):
+        return ()
+    cleaned = sorted({str(w).strip() for w in raw if str(w).strip()})
+    return tuple(cleaned)
+
+
+def _invalidate_cache() -> None:
+    with _cache_lock:
+        _anon_cache.clear()
 
 # ─────────────────────────────────────────────
 # Extensions autorisées
@@ -163,6 +250,61 @@ def set_tesseract():
     return jsonify(error=f"Fichier introuvable ou non fonctionnel : {path}"), 422
 
 
+@app.route("/categories", methods=["GET"])
+def get_categories():
+    disabled = list(_get_disabled_categories())
+    return jsonify(all=ALL_CATEGORIES, disabled=disabled)
+
+
+@app.route("/categories", methods=["POST"])
+def set_categories():
+    data = request.get_json(force=True)
+    disabled = data.get("disabled", [])
+    if not isinstance(disabled, list) or not all(isinstance(c, str) for c in disabled):
+        return jsonify(error="Format invalide."), 400
+    unknown = [c for c in disabled if c not in ALL_CATEGORIES]
+    if unknown:
+        return jsonify(error=f"Catégorie inconnue : {', '.join(unknown)}"), 400
+    cfg = _read_config()
+    cfg["disabled_categories"] = sorted(set(disabled))
+    try:
+        _write_config(cfg)
+    except Exception as e:
+        log.error("Écriture config échouée : %s", e)
+        return jsonify(error="Impossible d'enregistrer la configuration."), 500
+    _invalidate_cache()
+    log.info("Catégories désactivées : %s", cfg["disabled_categories"])
+    return jsonify(success=True, disabled=cfg["disabled_categories"])
+
+
+@app.route("/ner-whitelist", methods=["GET"])
+def get_ner_whitelist():
+    return jsonify(whitelist=list(_get_ner_whitelist()))
+
+
+@app.route("/ner-whitelist", methods=["POST"])
+def set_ner_whitelist():
+    data = request.get_json(force=True)
+    items = data.get("whitelist", [])
+    if not isinstance(items, list) or not all(isinstance(w, str) for w in items):
+        return jsonify(error="Format invalide."), 400
+    cleaned = sorted({w.strip() for w in items if w.strip()})
+    if len(cleaned) > 500:
+        return jsonify(error="Maximum 500 entrées."), 400
+    if any(len(w) > 200 for w in cleaned):
+        return jsonify(error="Chaque entrée doit faire ≤ 200 caractères."), 400
+    cfg = _read_config()
+    cfg["ner_whitelist"] = cleaned
+    try:
+        _write_config(cfg)
+    except Exception as e:
+        log.error("Écriture whitelist échouée : %s", e)
+        return jsonify(error="Impossible d'enregistrer."), 500
+    _invalidate_cache()
+    log.info("NER whitelist : %d entrées", len(cleaned))
+    return jsonify(success=True, whitelist=cleaned)
+
+
 @app.route("/anonymize", methods=["POST"])
 def anonymize():
     if "file" not in request.files or request.files["file"].filename == "":
@@ -180,6 +322,7 @@ def anonymize():
         log.info("Lecture refusée : %s", e)
         return jsonify(error=str(e)), 422
 
+    raw_map = b""
     mapping_file = None
     if "mapping" in request.files and request.files["mapping"].filename != "":
         raw_map = request.files["mapping"].read()
@@ -188,8 +331,33 @@ def anonymize():
         tmp.close()
         mapping_file = tmp.name
 
+    disabled_cats = _get_disabled_categories()
+    whitelist = _get_ner_whitelist()
+    cache_key = _cache_key(text, raw_map, disabled_cats, whitelist)
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        log.info("Anonymisation cache HIT : fichier=%s", upload.filename)
+        if mapping_file:
+            try:
+                os.unlink(mapping_file)
+            except OSError:
+                pass
+        return jsonify(
+            original=text,
+            anonymized=cached["anonymized"],
+            summary=cached["summary"],
+            mapping=cached["mapping"],
+            filename=_anon_filename(upload.filename),
+            method=method,
+            cached=True,
+        )
+
     try:
-        anon = Anonymizer(mapping_file=mapping_file)
+        anon = Anonymizer(
+            mapping_file=mapping_file,
+            disabled_categories=disabled_cats,
+            ner_whitelist=whitelist,
+        )
         result = anon.anonymize(text)
         summary = _build_summary(anon)
         mapping_data = anon.mapping
@@ -199,6 +367,8 @@ def anonymize():
                 os.unlink(mapping_file)
             except OSError:
                 pass
+
+    _cache_put(cache_key, {"anonymized": result, "summary": summary, "mapping": mapping_data})
 
     log.info(
         "Anonymisation OK : fichier=%s méthode=%s entités=%d",
@@ -337,7 +507,7 @@ def admin_info():
     if LOG_FILE.exists():
         try:
             with open(LOG_FILE, encoding="utf-8", errors="replace") as f:
-                log_lines = [l.rstrip() for l in f.readlines()[-100:]]
+                log_lines = [line.rstrip() for line in f.readlines()[-100:]]
         except Exception:
             pass
     cfg: dict = {}
@@ -353,7 +523,7 @@ def admin_info():
         log_lines=log_lines,
         config_path=str(cfg_path),
         config=cfg,
-        version=Path("VERSION").read_text(encoding="utf-8").strip() if Path("VERSION").exists() else "?",
+        version=_read_version(),
     )
 
 
@@ -384,6 +554,16 @@ def admin_reset_config():
 # ─────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────
+
+def _read_version() -> str:
+    try:
+        path = bundled_resource("VERSION")
+        if path.exists():
+            return path.read_text(encoding="utf-8").strip()
+    except Exception:
+        pass
+    return "?"
+
 
 def _anon_filename(original: str) -> str:
     return f"{Path(original).stem}_anonymise.txt"

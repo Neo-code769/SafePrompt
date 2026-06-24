@@ -11,6 +11,11 @@ build/
 dist/
 *.spec.bak
 
+# Coverage
+.coverage
+coverage.xml
+htmlcov/
+
 # Local config (user-specific paths)
 config.json
 config.local.json

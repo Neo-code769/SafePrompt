@@ -1,7 +1,6 @@
-import json
 import pytest
-from crypto import encrypt_mapping, decrypt_mapping, is_encrypted
 
+from crypto import decrypt_mapping, encrypt_mapping, is_encrypted
 
 SAMPLE = {
     "mapping": {"jean.dupont@acme.fr": "[EMAIL_1]"},

@@ -21,14 +21,16 @@ Types détectés :
   - Numéros de sécurité sociale (NIR)
 """
 
-import re
-import json
 import argparse
+import json
+import logging
+import re
 import sys
 from pathlib import Path
-from typing import Optional
 
 from validators import VALIDATORS
+
+log = logging.getLogger("anonymizer")
 
 
 # ─────────────────────────────────────────────
@@ -81,6 +83,15 @@ PATTERNS = {
     "SIREN": re.compile(                        # SIREN 9 chiffres (keyword obligatoire)
         r'(?i)siren\s*[:=\-]?\s*\d{3}[\s.\-]?\d{3}[\s.\-]?\d{3}\b'
     ),
+    "DATE_NAISSANCE": re.compile(
+        # Mot-clé proximité obligatoire pour éviter faux positifs sur dates génériques.
+        # Capture la date dans le group 1.
+        r"(?i)(?:n[ée]e?(?:\(e\))?\s+le|date\s+de\s+naissance|naissance\s*[:=]|"
+        r"d(?:\.|ate)?\s*o(?:\.|f)?\s*b(?:\.|irth)?|born\s+(?:on\s+)?)"
+        r"\s*[:=\-]?\s*"
+        r"(\d{1,2}[\s/\-.]\d{1,2}[\s/\-.](?:19|20)\d{2}"
+        r"|(?:19|20)\d{2}[\s/\-.]\d{1,2}[\s/\-.]\d{1,2})"
+    ),
 }
 
 
@@ -90,11 +101,25 @@ class Anonymizer:
     Un mapping bidirectionnel permet la dé-anonymisation.
     """
 
-    def __init__(self, mapping_file: Optional[str] = None):
+    NER_MIN_LENGTH = 2
+
+    def __init__(
+        self,
+        mapping_file: str | None = None,
+        disabled_categories: "tuple[str, ...] | list[str] | None" = None,
+        ner_whitelist: "tuple[str, ...] | list[str] | None" = None,
+    ):
         self.mapping: dict[str, str] = {}          # original  -> [TAG_N]
         self.reverse_mapping: dict[str, str] = {}  # [TAG_N]   -> original
         self.counters: dict[str, int] = {}
         self.nlp = None
+        self.disabled_categories: set[str] = set(disabled_categories or ())
+        cleaned_wl = [w.strip() for w in (ner_whitelist or ()) if w.strip()]
+        self.ner_whitelist: set[str] = {w.casefold() for w in cleaned_wl}
+        self._ner_whitelist_pattern: re.Pattern | None = (
+            re.compile(r"\b(?:" + "|".join(re.escape(w) for w in cleaned_wl) + r")\b", re.IGNORECASE)
+            if cleaned_wl else None
+        )
 
         if mapping_file and Path(mapping_file).exists():
             self._load_mapping(mapping_file)
@@ -111,21 +136,18 @@ class Anonymizer:
             for model in ("fr_core_news_md", "fr_core_news_sm", "fr_core_news_lg"):
                 try:
                     self.nlp = spacy.load(model)
-                    print(f"[spaCy] Modèle chargé : {model}", file=sys.stderr)
+                    log.info("spaCy modèle chargé : %s", model)
                     return
                 except OSError:
                     continue
-            print(
-                "[Avertissement] Aucun modèle spaCy français trouvé.\n"
-                "  NER (noms/prénoms/lieux) désactivé.\n"
-                "  Installez-le avec : python -m spacy download fr_core_news_md",
-                file=sys.stderr,
+            log.warning(
+                "Aucun modèle spaCy français trouvé — NER désactivé. "
+                "Installer : python -m spacy download fr_core_news_md"
             )
         except ImportError:
-            print(
-                "[Avertissement] spaCy non installé — NER désactivé.\n"
-                "  pip install spacy && python -m spacy download fr_core_news_md",
-                file=sys.stderr,
+            log.warning(
+                "spaCy non installé — NER désactivé. "
+                "pip install spacy && python -m spacy download fr_core_news_md"
             )
 
     # ──────────────────────────────────────────
@@ -151,15 +173,15 @@ class Anonymizer:
         }
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        print(f"[Mapping] Sauvegardé dans : {filepath}", file=sys.stderr)
+        log.info("Mapping sauvegardé : %s", filepath)
 
     def _load_mapping(self, filepath: str):
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             data = json.load(f)
         self.mapping = data.get("mapping", {})
         self.reverse_mapping = data.get("reverse_mapping", {})
         self.counters = data.get("counters", {})
-        print(f"[Mapping] Chargé depuis : {filepath}", file=sys.stderr)
+        log.info("Mapping chargé : %s", filepath)
 
     # ──────────────────────────────────────────
     # Anonymisation par regex
@@ -183,6 +205,14 @@ class Anonymizer:
             return prefix + self._placeholder("PORT", port)
         return PATTERNS["PORT_KEYWORD"].sub(_sub, text)
 
+    def _anonymize_date_naissance(self, text: str) -> str:
+        """Remplace uniquement la date capturée (group 1), conserve le mot-clé."""
+        def _sub(m):
+            date_value = m.group(1)
+            tag = self._placeholder("DATE_NAISSANCE", date_value)
+            return m.group(0).replace(date_value, tag)
+        return PATTERNS["DATE_NAISSANCE"].sub(_sub, text)
+
     def _anonymize_regex(self, text: str) -> str:
         # MAC avant IPv6 — sinon "00:1A:2B:3C:4D:5E" matché comme IPv6
         order = [
@@ -200,13 +230,23 @@ class Anonymizer:
             ("CP_FR",        "CODE_POSTAL"),
         ]
         for key, category in order:
+            if category in self.disabled_categories:
+                continue
             text = self._regex_replace(text, PATTERNS[key], category)
-        text = self._anonymize_ports(text)
+        if "PORT" not in self.disabled_categories:
+            text = self._anonymize_ports(text)
+        if "DATE_NAISSANCE" not in self.disabled_categories:
+            text = self._anonymize_date_naissance(text)
         return text
 
     # ──────────────────────────────────────────
     # Anonymisation NER (spaCy)
     # ──────────────────────────────────────────
+
+    def _matches_whitelist(self, ent_text: str) -> bool:
+        if self._ner_whitelist_pattern is None:
+            return False
+        return bool(self._ner_whitelist_pattern.search(ent_text))
 
     def _anonymize_ner(self, text: str) -> str:
         if self.nlp is None:
@@ -220,10 +260,25 @@ class Anonymizer:
             "GPE":  "LIEU",
             "MISC": "DIVERS",
         }
+        tag_inner = re.compile(r"^[A-Za-z][A-Za-z0-9_]*_\d+$")
+
+        def _is_existing_tag(ent) -> bool:
+            # spaCy tokenise les crochets séparément : on vérifie le contexte.
+            if tag_inner.match(ent.text):
+                left = text[ent.start_char - 1] if ent.start_char > 0 else ""
+                right = text[ent.end_char] if ent.end_char < len(text) else ""
+                if left == "[" and right == "]":
+                    return True
+            return False
+
         entities = [
-            (ent.start_char, ent.end_char, label_map.get(ent.label_, ent.label_), ent.text)
+            (ent.start_char, ent.end_char, label_map[ent.label_], ent.text)
             for ent in doc.ents
             if ent.label_ in label_map
+            and label_map[ent.label_] not in self.disabled_categories
+            and not _is_existing_tag(ent)
+            and len(ent.text.strip()) >= self.NER_MIN_LENGTH
+            and not self._matches_whitelist(ent.text)
         ]
         # Remplacement en ordre inverse pour préserver les offsets
         for start, end, category, ent_text in sorted(entities, key=lambda x: x[0], reverse=True):
@@ -324,6 +379,8 @@ def interactive_mode(anonymizer: Anonymizer):
 
 
 def main():
+    if not logging.getLogger().handlers:
+        logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s", stream=sys.stderr)
     parser = build_parser()
     args = parser.parse_args()
 
@@ -351,7 +408,7 @@ def main():
     # ── Écriture ──────────────────────────────
     if args.output:
         Path(args.output).write_text(result, encoding="utf-8")
-        print(f"[OK] Résultat écrit dans : {args.output}", file=sys.stderr)
+        log.info("Résultat écrit dans : %s", args.output)
     else:
         print(result)
 

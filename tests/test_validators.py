@@ -1,4 +1,4 @@
-from validators import valid_pan, valid_iban, valid_nir, valid_siret, valid_siren, luhn_check
+from validators import luhn_check, valid_iban, valid_nir, valid_pan, valid_siren, valid_siret
 
 
 class TestLuhn:

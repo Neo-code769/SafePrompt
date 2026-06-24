@@ -18,7 +18,6 @@ import logging
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 from paths import bundled_resource, config_file
 
@@ -50,7 +49,7 @@ def _save_config(data: dict):
 # Détection Tesseract
 # ─────────────────────────────────────────────────────
 
-def _bundled_tesseract() -> Optional[str]:
+def _bundled_tesseract() -> str | None:
     """Tesseract embarqué dans la distribution (PyInstaller / installeur)."""
     candidate = bundled_resource("tesseract/tesseract.exe")
     if candidate.exists():
@@ -68,7 +67,7 @@ _STANDARD_PATHS = [
 ]
 
 
-def _find_in_path() -> Optional[str]:
+def _find_in_path() -> str | None:
     try:
         result = subprocess.run(
             ["where", "tesseract"] if sys.platform == "win32" else ["which", "tesseract"],
@@ -83,7 +82,7 @@ def _find_in_path() -> Optional[str]:
     return None
 
 
-def _find_via_registry() -> Optional[str]:
+def _find_via_registry() -> str | None:
     if sys.platform != "win32":
         return None
     try:
@@ -103,7 +102,7 @@ def _find_via_registry() -> Optional[str]:
     return None
 
 
-def find_tesseract_auto() -> Optional[str]:
+def find_tesseract_auto() -> str | None:
     # 1. Embarqué (priorité absolue pour déploiement AT)
     found = _bundled_tesseract()
     if found:
@@ -132,12 +131,12 @@ def find_tesseract_auto() -> Optional[str]:
 # État global
 # ─────────────────────────────────────────────────────
 
-_tesseract_path: Optional[str] = None
+_tesseract_path: str | None = None
 _tesseract_available: bool = False
-_tesseract_version: Optional[str] = None
+_tesseract_version: str | None = None
 
 
-def configure_tesseract(custom_path: Optional[str] = None) -> bool:
+def configure_tesseract(custom_path: str | None = None) -> bool:
     global _tesseract_path, _tesseract_available, _tesseract_version
     try:
         import pytesseract
@@ -176,7 +175,7 @@ def is_available() -> bool:
     return _tesseract_available
 
 
-def get_path() -> Optional[str]:
+def get_path() -> str | None:
     return _tesseract_path
 
 
@@ -214,9 +213,9 @@ def ocr_image_bytes(image_bytes: bytes, lang: str = "fra+eng") -> str:
 
 def ocr_pdf_bytes(pdf_bytes: bytes, lang: str = "fra+eng", dpi: int = 300) -> str:
     _require_tesseract()
+    import fitz
     import pytesseract
     from PIL import Image
-    import fitz
 
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     page_count = len(doc)

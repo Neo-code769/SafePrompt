@@ -1,0 +1,13 @@
+line-length = 120
+target-version = "py311"
+extend-exclude = ["build", "dist", "vendor", "installer", "__pycache__"]
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+    "E501",  # line length (gradual cleanup)
+    "B008",  # function call in default arg (Flask routes)
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["B"]
