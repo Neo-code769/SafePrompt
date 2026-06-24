@@ -1,0 +1,233 @@
+/* ============================================================
+   SAFE PROMPT — Direction B « Parcours »
+   Charte Action Telecom · feuille de style à intégrer
+   ------------------------------------------------------------
+   Usage : <link rel="stylesheet" href="safe-prompt-b.css">
+   + polices embarquées en local via @font-face (offline-safe).
+   Toutes les classes sont préfixées .sp- pour éviter les
+   collisions avec votre CSS existant.
+   ============================================================ */
+
+/* Polices locales (offline-safe) — packagées dans static/fonts/ */
+@font-face { font-family: 'Space Grotesk'; font-style: normal; font-weight: 500;
+             font-display: swap; src: url('fonts/space-grotesk-500.ttf') format('truetype'); }
+@font-face { font-family: 'Space Grotesk'; font-style: normal; font-weight: 600;
+             font-display: swap; src: url('fonts/space-grotesk-600.ttf') format('truetype'); }
+@font-face { font-family: 'Space Grotesk'; font-style: normal; font-weight: 700;
+             font-display: swap; src: url('fonts/space-grotesk-700.ttf') format('truetype'); }
+@font-face { font-family: 'Hanken Grotesk'; font-style: normal; font-weight: 400;
+             font-display: swap; src: url('fonts/hanken-grotesk-400.ttf') format('truetype'); }
+@font-face { font-family: 'Hanken Grotesk'; font-style: normal; font-weight: 500;
+             font-display: swap; src: url('fonts/hanken-grotesk-500.ttf') format('truetype'); }
+@font-face { font-family: 'Hanken Grotesk'; font-style: normal; font-weight: 600;
+             font-display: swap; src: url('fonts/hanken-grotesk-600.ttf') format('truetype'); }
+@font-face { font-family: 'Hanken Grotesk'; font-style: normal; font-weight: 700;
+             font-display: swap; src: url('fonts/hanken-grotesk-700.ttf') format('truetype'); }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 400;
+             font-display: swap; src: url('fonts/jetbrains-mono-400.ttf') format('truetype'); }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 500;
+             font-display: swap; src: url('fonts/jetbrains-mono-500.ttf') format('truetype'); }
+
+:root{
+  /* — Marque Action Telecom — */
+  --sp-orange:#ED5A13;        /* action principale / logo */
+  --sp-orange-ink:#C24A0E;    /* texte orange sur fond clair */
+  --sp-violet:#6E2BD9;        /* primaire parcours B */
+  --sp-violet-tint:#F1EDFA;   /* fonds violet clairs */
+  --sp-violet-tint2:#F4F0FC;
+  --sp-green:#12805C;         /* succès / validé */
+
+  /* — Neutres — */
+  --sp-ink:#1A1726;           /* titres */
+  --sp-text:#45414F;          /* corps */
+  --sp-muted:#8C8696;         /* secondaire */
+  --sp-faint:#A89FBC;         /* désactivé */
+  --sp-bg:#FAF8FE;            /* fond appli (lavande très clair) */
+  --sp-surface:#FFFFFF;
+  --sp-line:#E7E1F2;          /* bordures */
+  --sp-line-soft:#EFEAF7;
+
+  /* — Couleurs par catégorie d'entité — */
+  --sp-c-personne:#6E2BD9;  --sp-c-personne-bg:#EFE9FB;
+  --sp-c-email:#C24A0E;     --sp-c-email-bg:#FCEEE4;
+  --sp-c-tel:#0E7D6B;       --sp-c-tel-bg:#E2F4F0;
+  --sp-c-org:#A8237F;       --sp-c-org-bg:#FAE8F4;
+  --sp-c-iban:#2456BE;      --sp-c-iban-bg:#E8EFFC;
+  --sp-c-adresse:#9A6410;   --sp-c-adresse-bg:#F8EFDD;
+  /* Palette étendue — un ton distinct par PII */
+  --sp-c-cb:#B5172E;        --sp-c-cb-bg:#FCE5E9;
+  --sp-c-nir:#862F73;       --sp-c-nir-bg:#F6E5F1;
+  --sp-c-siret:#355C7D;     --sp-c-siret-bg:#E4ECF3;
+  --sp-c-siren:#167E8E;     --sp-c-siren-bg:#DEF1F4;
+  --sp-c-date:#5C2F87;      --sp-c-date-bg:#ECE3F5;
+  --sp-c-hostname:#3F3D8A;  --sp-c-hostname-bg:#E6E5F3;
+  --sp-c-ipv4:#4D6480;      --sp-c-ipv4-bg:#E7ECF2;
+  --sp-c-ipv6:#4F4399;      --sp-c-ipv6-bg:#E9E6F5;
+  --sp-c-mac:#4A5363;       --sp-c-mac-bg:#E7E9EC;
+  --sp-c-port:#6A6816;      --sp-c-port-bg:#F1F0DA;
+  --sp-c-cp:#7A4B23;        --sp-c-cp-bg:#F2E7DA;
+  --sp-c-divers:#6B6471;    --sp-c-divers-bg:#EBE9EC;
+
+  /* — Type — */
+  --sp-font-display:'Space Grotesk',system-ui,sans-serif;
+  --sp-font-ui:'Hanken Grotesk',system-ui,sans-serif;
+  --sp-font-mono:'JetBrains Mono',ui-monospace,monospace;
+
+  /* — Rayons / ombres / rythme — */
+  --sp-r-sm:7px; --sp-r:10px; --sp-r-lg:14px; --sp-r-pill:999px;
+  --sp-shadow:0 1px 3px rgba(20,16,30,.07);
+  --sp-shadow-lg:0 8px 30px rgba(20,16,30,.10);
+}
+
+/* ---------- Réinitialisation locale ---------- */
+.sp-app *{box-sizing:border-box;}
+.sp-app{
+  font-family:var(--sp-font-ui);
+  color:var(--sp-text);
+  background:var(--sp-bg);
+  -webkit-font-smoothing:antialiased;
+  min-height:100%;
+}
+
+/* ============ EN-TÊTE + NAVIGATION ============ */
+.sp-header{
+  display:flex;flex-direction:column;align-items:center;gap:15px;
+  padding:28px 24px 22px;background:var(--sp-surface);
+  border-bottom:1px solid var(--sp-line-soft);
+}
+.sp-brand{display:flex;align-items:center;gap:11px;}
+.sp-logo{
+  width:36px;height:36px;border-radius:9px;background:var(--sp-orange);
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font:700 15px/1 var(--sp-font-display);
+}
+.sp-brand-name{font:600 17px/1 var(--sp-font-display);color:var(--sp-ink);letter-spacing:-.01em;}
+.sp-brand-sub{font:500 11px/1 var(--sp-font-ui);color:var(--sp-faint);margin-top:2px;}
+
+.sp-nav{display:flex;gap:4px;background:var(--sp-violet-tint);border-radius:var(--sp-r-pill);padding:4px;}
+.sp-nav a,.sp-nav button{
+  border:0;cursor:pointer;background:none;
+  font:500 13px/1 var(--sp-font-ui);color:#7A6E92;
+  border-radius:var(--sp-r-pill);padding:8px 18px;text-decoration:none;
+}
+.sp-nav .is-active{background:var(--sp-violet);color:#fff;font-weight:600;}
+
+/* ============ STEPPER ============ */
+.sp-steps{display:flex;align-items:center;justify-content:center;padding:26px 24px 4px;}
+.sp-step{display:flex;flex-direction:column;align-items:center;gap:8px;width:104px;}
+.sp-step-dot{
+  width:32px;height:32px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font:700 14px/1 var(--sp-font-display);
+}
+.sp-step--done .sp-step-dot{background:var(--sp-violet);color:#fff;}
+.sp-step--active .sp-step-dot{background:var(--sp-violet);color:#fff;box-shadow:0 0 0 4px #EBE3FA;}
+.sp-step--todo .sp-step-dot{background:#fff;border:2px solid #DDD6EA;color:var(--sp-faint);}
+.sp-step-label{font:600 12px/1 var(--sp-font-ui);color:var(--sp-ink);}
+.sp-step--todo .sp-step-label{font-weight:500;color:var(--sp-faint);}
+.sp-step-line{width:60px;height:2px;background:#E2DCEF;margin-bottom:20px;}
+.sp-step-line--done{background:var(--sp-violet);}
+
+/* ============ CONTENU CENTRÉ ============ */
+.sp-panel{max-width:620px;margin:0 auto;padding:18px 24px 32px;display:flex;flex-direction:column;gap:22px;}
+.sp-section-title{font:600 16px/1.2 var(--sp-font-display);color:var(--sp-ink);letter-spacing:-.01em;}
+.sp-section-help{font:400 13px/1.4 var(--sp-font-ui);color:var(--sp-muted);margin-top:5px;}
+
+/* ============ ZONE DE DÉPÔT / FICHIER ============ */
+.sp-dropzone{
+  border:1.5px dashed #D9CFEC;border-radius:var(--sp-r-lg);
+  background:#fff;padding:34px 24px;text-align:center;cursor:pointer;
+  transition:border-color .15s,background .15s;
+}
+.sp-dropzone:hover{border-color:var(--sp-violet);background:var(--sp-violet-tint2);}
+.sp-dropzone-title{font:600 15px/1.3 var(--sp-font-ui);color:var(--sp-ink);}
+.sp-dropzone-hint{font:400 12px/1.4 var(--sp-font-ui);color:var(--sp-muted);margin-top:6px;}
+
+.sp-file{display:flex;align-items:center;gap:13px;background:#fff;border:1px solid var(--sp-line);border-radius:11px;padding:15px 17px;}
+.sp-file-ic{width:40px;height:40px;border-radius:9px;background:#EEF4F1;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--sp-green);}
+.sp-file-name{font:600 14px/1.2 var(--sp-font-ui);color:var(--sp-ink);}
+.sp-file-meta{font:500 12px/1 var(--sp-font-ui);color:var(--sp-muted);margin-top:3px;}
+.sp-file-action{margin-left:auto;font:500 13px/1 var(--sp-font-ui);color:var(--sp-violet);cursor:pointer;}
+
+/* ============ RANGÉES À BASCULE (catégories) ============ */
+.sp-toggle-row{display:flex;align-items:center;gap:14px;padding:13px 4px;border-bottom:1px solid var(--sp-line-soft);}
+.sp-toggle-row:last-child{border-bottom:0;}
+.sp-dot{width:9px;height:9px;border-radius:3px;flex-shrink:0;}
+.sp-toggle-text{flex:1;}
+.sp-toggle-name{font:600 14px/1.2 var(--sp-font-ui);color:var(--sp-ink);}
+.sp-toggle-desc{font:400 12px/1.3 var(--sp-font-ui);color:var(--sp-muted);}
+.sp-toggle-row.is-off .sp-toggle-name{color:var(--sp-faint);}
+.sp-toggle-row.is-off .sp-toggle-desc{color:#B7B1C2;}
+.sp-toggle-row.is-off .sp-dot{background:#D7D3CD !important;}
+
+/* interrupteur (checkbox accessible) */
+.sp-switch{position:relative;width:40px;height:23px;flex-shrink:0;cursor:pointer;}
+.sp-switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;}
+.sp-switch .track{position:absolute;inset:0;border-radius:var(--sp-r-pill);background:#DEDAE8;transition:background .15s;}
+.sp-switch .knob{position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.15);}
+.sp-switch input:checked ~ .track{background:var(--sp-violet);}
+.sp-switch input:checked ~ .knob{left:19px;}
+
+/* ============ LISTE BLANCHE / TAGS ============ */
+.sp-tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border:1px solid var(--sp-line);border-radius:var(--sp-r);background:#fff;padding:9px 11px;}
+.sp-tag{display:flex;align-items:center;gap:6px;background:#F2F0F4;border-radius:5px;padding:5px 9px;font:500 12px/1 var(--sp-font-ui);color:var(--sp-text);}
+.sp-tag b{cursor:pointer;color:#B0ACB8;font-weight:500;}
+.sp-tags input{border:0;outline:0;background:none;font:400 12px/1 var(--sp-font-ui);color:var(--sp-text);flex:1;min-width:120px;}
+
+/* ============ APERÇU / TEXTE & ENTITÉS ============ */
+.sp-preview{
+  border:1px solid var(--sp-line);border-radius:11px;background:#fff;
+  padding:16px 17px;font:400 13px/1.9 var(--sp-font-mono);color:var(--sp-text);
+}
+.sp-ent{border-radius:3px;padding:1px 4px;font-weight:500;}
+.sp-ent.personne{background:var(--sp-c-personne-bg);color:var(--sp-c-personne);}
+.sp-ent.email   {background:var(--sp-c-email-bg);color:var(--sp-c-email);}
+.sp-ent.tel     {background:var(--sp-c-tel-bg);color:var(--sp-c-tel);}
+.sp-ent.org     {background:var(--sp-c-org-bg);color:var(--sp-c-org);}
+.sp-ent.iban    {background:var(--sp-c-iban-bg);color:var(--sp-c-iban);}
+.sp-ent.adresse {background:var(--sp-c-adresse-bg);color:var(--sp-c-adresse);}
+.sp-ent.cb       {background:var(--sp-c-cb-bg);color:var(--sp-c-cb);}
+.sp-ent.nir      {background:var(--sp-c-nir-bg);color:var(--sp-c-nir);}
+.sp-ent.siret    {background:var(--sp-c-siret-bg);color:var(--sp-c-siret);}
+.sp-ent.siren    {background:var(--sp-c-siren-bg);color:var(--sp-c-siren);}
+.sp-ent.date     {background:var(--sp-c-date-bg);color:var(--sp-c-date);}
+.sp-ent.hostname {background:var(--sp-c-hostname-bg);color:var(--sp-c-hostname);}
+.sp-ent.ipv4     {background:var(--sp-c-ipv4-bg);color:var(--sp-c-ipv4);}
+.sp-ent.ipv6     {background:var(--sp-c-ipv6-bg);color:var(--sp-c-ipv6);}
+.sp-ent.mac      {background:var(--sp-c-mac-bg);color:var(--sp-c-mac);}
+.sp-ent.port     {background:var(--sp-c-port-bg);color:var(--sp-c-port);}
+.sp-ent.cp       {background:var(--sp-c-cp-bg);color:var(--sp-c-cp);}
+.sp-ent.divers   {background:var(--sp-c-divers-bg);color:var(--sp-c-divers);}
+
+/* ============ BANNIÈRES ============ */
+.sp-note{display:flex;align-items:center;gap:11px;border-radius:var(--sp-r);padding:13px 15px;font:500 12px/1.4 var(--sp-font-ui);}
+.sp-note--info{background:var(--sp-violet-tint2);color:#5B4A7A;}
+.sp-note--warn{background:#FFF6E9;color:#8A5E0C;}
+.sp-note--ok{background:#ECF7F1;color:#0C5E44;}
+.sp-note svg{flex-shrink:0;}
+
+/* ============ BOUTONS ============ */
+.sp-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  font:600 14px/1 var(--sp-font-ui);padding:14px 18px;border-radius:11px;
+  border:1px solid transparent;cursor:pointer;text-decoration:none;
+}
+.sp-btn--primary{background:var(--sp-violet);color:#fff;}
+.sp-btn--primary:hover{background:#5e22bf;}
+.sp-btn--ghost{background:#fff;color:#5B4A7A;border-color:#DDD6EA;}
+.sp-btn--block{width:100%;font-size:15px;padding:15px;}
+/* variante action « anonymiser » en orange si vous préférez l'accent marque */
+.sp-btn--orange{background:var(--sp-orange);color:#fff;}
+.sp-btn--orange:hover{background:#d44e0c;}
+
+/* ============ ÉCRAN RÉSULTAT ============ */
+.sp-result{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;}
+.sp-result-ic{width:56px;height:56px;border-radius:50%;background:#EAF6F0;display:flex;align-items:center;justify-content:center;color:var(--sp-green);margin-bottom:6px;}
+.sp-result h2{font:600 22px/1.1 var(--sp-font-display);color:var(--sp-ink);letter-spacing:-.02em;margin:0;}
+.sp-result p{font:400 14px/1.4 var(--sp-font-ui);color:var(--sp-muted);max-width:380px;margin:0;}
+.sp-result strong{color:var(--sp-violet);font-weight:600;}
+
+/* ============ ÉTAPES NUMÉROTÉES (dé-anonymiser) ============ */
+.sp-numstep{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.sp-num{width:24px;height:24px;border-radius:50%;background:var(--sp-violet);color:#fff;display:flex;align-items:center;justify-content:center;font:700 12px/1 var(--sp-font-display);}
+.sp-numstep span:last-child{font:600 15px/1 var(--sp-font-display);color:var(--sp-ink);}

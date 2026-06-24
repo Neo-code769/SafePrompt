@@ -51,7 +51,12 @@ log = logging.getLogger("app")
 
 BASE_DIR = bundled_resource("")
 
-app = Flask(__name__, template_folder=str(BASE_DIR / "templates"))
+app = Flask(
+    __name__,
+    template_folder=str(BASE_DIR / "templates"),
+    static_folder=str(BASE_DIR / "static"),
+    static_url_path="/static",
+)
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 Mo max
 app.config["SECRET_KEY"] = secrets.token_hex(32)  # régénéré à chaque démarrage (local)
 

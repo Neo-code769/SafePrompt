@@ -3,820 +3,756 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Anonymiseur — Protection des données</title>
+  <title>Safe Prompt — Action Telecom</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='safe-prompt-b.css') }}">
   <style>
-    /* ── Variables charte Action Telecom ─────── */
-    :root {
-      --orange:      #F47920;
-      --orange-lt:   #FFF0E5;
-      --orange-dk:   #d9650d;
-      --purple:      #6B2FD9;
-      --purple-lt:   #F0EAFF;
-      --purple-dk:   #5522b8;
-      --bg:          #ECEEF2;
-      --surface:     #FFFFFF;
-      --border:      #DDE1E9;
-      --text:        #1C1F2E;
-      --muted:       #6B7280;
-      --shadow:      0 2px 12px rgba(0,0,0,.08);
-      --shadow-md:   0 6px 24px rgba(0,0,0,.10);
-      --radius:      12px;
-      --radius-sm:   8px;
-    }
+    /* ════════════════════════════════════════════════
+       Compléments à safe-prompt-b.css (résidus non couverts)
+    ══════════════════════════════════════════════════ */
+    body { margin: 0; background: #EDEAF4; min-height: 100vh; }
+    .sp-shell { max-width: 880px; margin: 24px auto; background: var(--sp-bg);
+                border: 1px solid var(--sp-line); border-radius: 14px;
+                overflow: hidden; box-shadow: var(--sp-shadow-lg); }
+    .ic { stroke-width: 2; fill: none; }
 
-    /* ── Reset & base ─────────────────────────── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
+    /* Header — variante en ligne (logo + nav + ocr badge) */
+    .sp-header { flex-direction: row; justify-content: space-between;
+                 padding: 18px 24px; gap: 18px; flex-wrap: wrap; }
+    .sp-nav { flex-wrap: wrap; }
+    .sp-ocr-badge { font: 600 11px/1 var(--sp-font-ui); padding: 6px 11px;
+                    border-radius: var(--sp-r-pill); cursor: pointer;
+                    border: 1px solid transparent; white-space: nowrap; }
 
-    /* ── Header ───────────────────────────────── */
-    header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 32px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      box-shadow: var(--shadow);
-    }
-    header .logo {
-      width: 42px; height: 42px;
-      background: var(--orange);
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 900;
-      color: #fff; letter-spacing: -.5px;
-      box-shadow: 0 2px 8px rgba(244,121,32,.35);
-      flex-shrink: 0;
-    }
-    header h1 { font-size: 1.15rem; font-weight: 700; color: var(--text); }
-    header p  { font-size: 0.76rem; color: var(--muted); margin-top: 1px; }
+    /* Tab panels */
+    .sp-tab-panel { display: none; }
+    .sp-tab-panel.is-active { display: block; }
 
-    main {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 32px 24px;
-    }
+    /* Drag-over visual sur dropzone */
+    .sp-dropzone { position: relative; }
+    .sp-dropzone input[type=file] { position: absolute; inset: 0;
+                                     opacity: 0; cursor: pointer; }
+    .sp-dropzone.drag-over { border-color: var(--sp-violet);
+                              background: var(--sp-violet-tint); }
+    .sp-dropzone-icon { font-size: 36px; line-height: 1; margin-bottom: 10px; }
 
-    /* ── Tabs ─────────────────────────────────── */
-    .tabs {
-      display: flex; gap: 2px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 4px;
-      width: fit-content;
-      margin-bottom: 24px;
-      box-shadow: var(--shadow);
-    }
-    .tab-btn {
-      padding: 8px 24px;
-      border: none; background: transparent;
-      color: var(--muted); font-size: 0.88rem; font-weight: 500;
-      border-radius: var(--radius-sm); cursor: pointer;
-      transition: all .15s;
-    }
-    .tab-btn.active {
-      background: var(--purple);
-      color: #fff;
-      box-shadow: 0 2px 8px rgba(107,47,217,.30);
-    }
-    .tab-btn:hover:not(.active) { background: var(--bg); color: var(--text); }
+    /* File row : input caché + bouton sp-file-action en label */
+    .sp-file label.sp-file-action { cursor: pointer; }
+    .sp-file input[type=file] { display: none; }
 
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
+    /* Loader */
+    .sp-loader { display: none; align-items: center; justify-content: center;
+                 gap: 10px; padding: 14px; font: 500 13px/1 var(--sp-font-ui);
+                 color: var(--sp-muted); }
+    .sp-spinner { width: 18px; height: 18px;
+                  border: 2.5px solid var(--sp-line);
+                  border-top-color: var(--sp-violet); border-radius: 50%;
+                  animation: sp-spin .8s linear infinite; }
+    @keyframes sp-spin { to { transform: rotate(360deg); } }
 
-    /* ── Upload zone ──────────────────────────── */
-    .upload-area {
-      background: var(--surface);
-      border: 2px dashed var(--border);
-      border-radius: var(--radius);
-      padding: 44px 32px;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color .2s, background .2s;
-      position: relative;
-      box-shadow: var(--shadow);
-    }
-    .upload-area:hover, .upload-area.drag-over {
-      border-color: var(--orange);
-      background: var(--orange-lt);
-    }
-    .upload-area input[type=file] {
-      position: absolute; inset: 0; opacity: 0; cursor: pointer;
-    }
-    .upload-icon { font-size: 2.4rem; margin-bottom: 12px; }
-    .upload-area h2 { font-size: .98rem; font-weight: 600; color: var(--text); margin-bottom: 6px; }
-    .upload-area p  { font-size: 0.81rem; color: var(--muted); line-height: 1.7; }
-    .upload-area .file-name {
-      margin-top: 14px; font-size: 0.85rem; color: var(--orange);
-      font-weight: 600;
-    }
+    /* Error banner */
+    .sp-error { display: none; padding: 12px 15px; background: #FBEAEA;
+                color: #8E1A1A; border: 1px solid #F1C2C2;
+                border-left: 4px solid #C53030; border-radius: var(--sp-r);
+                font: 500 13px/1.4 var(--sp-font-ui); }
 
-    /* ── Mapping row ──────────────────────────── */
-    .mapping-row {
-      margin-top: 14px;
-      display: flex; align-items: center; gap: 12px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 11px 16px;
-      box-shadow: var(--shadow);
-    }
-    .mapping-row label { font-size: 0.84rem; color: var(--muted); flex: 1; }
-    .mapping-row .mapping-file-name { font-size: 0.81rem; color: var(--orange); font-weight: 500; }
-    .btn-ghost {
-      padding: 6px 14px; border-radius: var(--radius-sm);
-      border: 1px solid var(--border); background: var(--bg);
-      color: var(--muted); font-size: 0.81rem; cursor: pointer;
-      transition: all .15s; white-space: nowrap;
-      position: relative; overflow: hidden;
-    }
-    .btn-ghost input[type=file] {
-      position: absolute; inset: 0; opacity: 0; cursor: pointer;
-    }
-    .btn-ghost:hover { border-color: var(--orange); color: var(--orange); background: var(--orange-lt); }
-
-    /* ── Action buttons ───────────────────────── */
-    .actions { margin-top: 18px; display: flex; gap: 10px; }
-    .btn-primary {
-      padding: 10px 28px; border-radius: var(--radius-sm);
-      background: var(--purple);
-      color: #fff; font-size: 0.9rem; font-weight: 600;
-      border: none; cursor: pointer;
-      transition: background .15s, box-shadow .15s;
-      box-shadow: 0 2px 10px rgba(107,47,217,.30);
-    }
-    .btn-primary:hover  { background: var(--purple-dk); box-shadow: 0 4px 16px rgba(107,47,217,.40); }
-    .btn-primary:active { background: var(--purple-dk); }
-    .btn-primary:disabled { background: #c8b8f0; cursor: not-allowed; box-shadow: none; }
-
-    .btn-secondary {
-      padding: 10px 22px; border-radius: var(--radius-sm);
-      background: var(--surface); border: 1px solid var(--border);
-      color: var(--muted); font-size: 0.87rem; font-weight: 500;
-      cursor: pointer; transition: all .15s;
-    }
-    .btn-secondary:hover { border-color: var(--orange); color: var(--orange); background: var(--orange-lt); }
-
-    /* ── Loader ───────────────────────────────── */
-    #loader {
-      display: none;
-      align-items: center; gap: 10px;
-      margin-top: 18px; font-size: 0.87rem; color: var(--muted);
-    }
-    .spinner {
-      width: 18px; height: 18px;
-      border: 2px solid var(--border);
-      border-top-color: var(--orange);
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── Error ────────────────────────────────── */
-    #error-box {
-      display: none;
-      margin-top: 18px;
-      background: #FFF0F0; border: 1px solid #FFCDD2;
-      border-left: 4px solid #e53935;
-      border-radius: var(--radius-sm); padding: 12px 16px;
-      color: #c62828; font-size: 0.87rem;
-    }
-
-    /* ── Results ──────────────────────────────── */
-    #results { display: none; margin-top: 28px; }
-
-    .results-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
-      margin-bottom: 20px;
-    }
-    @media (max-width: 768px) { .results-grid { grid-template-columns: 1fr; } }
-
-    .result-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      box-shadow: var(--shadow);
-    }
-    .result-card-header {
-      padding: 11px 16px;
-      display: flex; align-items: center; justify-content: space-between;
-      border-bottom: 1px solid var(--border);
-      background: #FAFBFC;
-    }
-    .result-card-header span {
-      font-size: 0.78rem; font-weight: 700; color: var(--muted);
-      text-transform: uppercase; letter-spacing: .06em;
-    }
-    .badge {
-      font-size: 0.7rem; padding: 2px 9px; border-radius: 20px;
-      font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
-    }
-    .badge-original { background: #E6F7EE; color: #1B7F4A; }
-    .badge-anon     { background: var(--purple-lt); color: var(--purple); }
-
-    .result-text {
-      padding: 14px 16px;
-      font-family: 'Cascadia Code', 'Consolas', monospace;
-      font-size: 0.79rem;
-      line-height: 1.75;
-      white-space: pre-wrap;
-      word-break: break-word;
-      max-height: 360px;
-      overflow-y: auto;
-      color: #374151;
-    }
-    .result-text::-webkit-scrollbar { width: 5px; }
-    .result-text::-webkit-scrollbar-track { background: #f9fafb; }
-    .result-text::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-    /* Tags anonymisés */
-    .result-text .tag {
-      background: var(--purple-lt);
-      color: var(--purple);
-      border-radius: 4px;
-      padding: 1px 5px;
-      font-weight: 700;
-      border: 1px solid #D4C0F7;
-    }
-
-    /* ── Summary ──────────────────────────────── */
-    #summary-section {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      margin-bottom: 20px;
-      box-shadow: var(--shadow);
-    }
-    #summary-section .section-header {
-      padding: 13px 18px;
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-      background: #FAFBFC;
-    }
-    #summary-section .section-header h3 { font-size: 0.88rem; font-weight: 700; color: var(--text); }
-    #summary-count { font-size: 0.79rem; color: var(--muted); }
-
-    #summary-body { padding: 16px 18px; display: flex; flex-wrap: wrap; gap: 22px; }
-
-    .category-block h4 {
-      font-size: 0.72rem; text-transform: uppercase; letter-spacing: .07em;
-      color: var(--orange); font-weight: 700; margin-bottom: 8px;
-    }
-    .category-block table { border-collapse: collapse; }
-    .category-block td {
-      padding: 4px 10px; font-size: 0.81rem;
-      border-bottom: 1px solid #f3f4f6;
-    }
-    .category-block td:first-child {
-      font-family: monospace; color: var(--purple); font-weight: 700;
-      padding-right: 18px;
-    }
-    .category-block td:last-child { color: var(--muted); }
-
-    /* ── Download bar ─────────────────────────── */
-    .download-bar { display: flex; gap: 10px; flex-wrap: wrap; }
-
-    /* ── Modal OCR ────────────────────────────── */
-    .modal-backdrop {
-      display: none; position: fixed; inset: 0;
-      background: rgba(28,31,46,.55); z-index: 100;
-      align-items: center; justify-content: center;
-      backdrop-filter: blur(4px);
-    }
+    /* Modal OCR */
+    .modal-backdrop { display: none; position: fixed; inset: 0;
+                      background: rgba(20,16,30,.55); z-index: 100;
+                      align-items: center; justify-content: center;
+                      padding: 20px; backdrop-filter: blur(3px); }
     .modal-backdrop.open { display: flex; }
-    .modal {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 16px; padding: 28px 32px;
-      width: min(520px, 94vw); box-shadow: var(--shadow-md);
-    }
-    .modal h2 { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
-    .modal p  { font-size: .83rem; color: var(--muted); margin-bottom: 16px; line-height: 1.65; }
-    .modal label { display: block; font-size: .8rem; color: var(--muted); font-weight: 500; margin-bottom: 5px; }
-    .modal input[type=text] {
-      width: 100%; padding: 9px 12px; border-radius: var(--radius-sm);
-      background: var(--bg); border: 1px solid var(--border);
-      color: var(--text); font-size: .87rem; outline: none;
-      transition: border-color .15s;
-    }
-    .modal input[type=text]:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(244,121,32,.12); }
-    .modal .modal-footer { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
-    .modal .msg { font-size: .8rem; margin-top: 10px; padding: 9px 13px; border-radius: var(--radius-sm); }
-    .modal .msg.ok  { background: #E6F7EE; color: #1B7F4A; border: 1px solid #B2DFC7; }
-    .modal .msg.err { background: #FFF0F0; color: #c62828; border: 1px solid #FFCDD2; }
-    .modal .steps { background: var(--bg); border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 16px; border: 1px solid var(--border); }
-    .modal .steps ol { padding-left: 18px; }
-    .modal .steps li { font-size: .82rem; color: var(--muted); margin-bottom: 7px; line-height: 1.55; }
-    .modal .steps a  { color: var(--orange); text-decoration: none; font-weight: 500; }
+    .modal { background: var(--sp-surface); border-radius: var(--sp-r-lg);
+             padding: 26px 28px; max-width: 540px; width: 100%;
+             box-shadow: var(--sp-shadow-lg); }
+    .modal h2 { font: 600 18px/1.2 var(--sp-font-display);
+                color: var(--sp-ink); margin: 0 0 10px; letter-spacing: -.01em; }
+    .modal > p { font: 400 14px/1.5 var(--sp-font-ui);
+                 color: var(--sp-text); margin: 0 0 16px; }
+    .modal .steps { background: var(--sp-violet-tint2);
+                    border: 1px solid var(--sp-line-soft);
+                    border-radius: var(--sp-r-sm); padding: 14px 18px;
+                    margin: 0 0 16px; }
+    .modal .steps ol { margin: 0; padding-left: 20px;
+                       font: 400 13px/1.6 var(--sp-font-ui);
+                       color: var(--sp-text); }
+    .modal .steps a { color: var(--sp-violet); font-weight: 600;
+                      text-decoration: none; }
     .modal .steps a:hover { text-decoration: underline; }
+    .modal label { display: block; font: 600 13px/1 var(--sp-font-ui);
+                   color: var(--sp-ink); margin: 14px 0 6px; }
+    .modal input[type=text] { width: 100%; padding: 10px 12px;
+                              border: 1px solid var(--sp-line);
+                              border-radius: var(--sp-r-sm);
+                              font: 13px/1 var(--sp-font-mono);
+                              color: var(--sp-text); }
+    .modal input[type=text]:focus { outline: none; border-color: var(--sp-violet);
+                                     box-shadow: 0 0 0 3px var(--sp-violet-tint); }
+    .modal .msg { padding: 10px 13px; border-radius: var(--sp-r-sm);
+                  font: 500 13px/1.4 var(--sp-font-ui); margin-top: 10px;
+                  display: none; }
+    .modal .msg.ok  { background: #ECF7F1; color: #0C5E44;
+                      border: 1px solid #B2DFC7; }
+    .modal .msg.err { background: #FBEAEA; color: #8E1A1A;
+                      border: 1px solid #F1C2C2; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end;
+                    margin-top: 18px; }
 
-    /* ── Error dé-anonymiser ──────────────────── */
-    #error-box-da {
-      display: none; margin-top: 18px;
-      background: #FFF0F0; border: 1px solid #FFCDD2;
-      border-left: 4px solid #e53935;
-      border-radius: var(--radius-sm); padding: 12px 16px;
-      color: #c62828; font-size: .87rem;
-    }
+    /* Tags surlignés dans .sp-preview (fallback) */
+    .sp-preview .tag { background: var(--sp-violet-tint);
+                       color: var(--sp-violet); padding: 1px 5px;
+                       border-radius: 3px; font-weight: 500; }
 
-    /* ── Copy button ──────────────────────────── */
-    .btn-copy {
-      padding: 4px 10px; border-radius: var(--radius-sm);
-      border: 1px solid var(--border); background: transparent;
-      color: var(--muted); font-size: 0.75rem; cursor: pointer;
-      transition: all .15s; white-space: nowrap;
+    /* Result preview grid */
+    .sp-preview-grid { display: grid; grid-template-columns: 1fr 1fr;
+                       gap: 14px; }
+    @media (max-width: 720px) {
+      .sp-preview-grid { grid-template-columns: 1fr; }
+      .sp-header { padding: 14px 18px; }
     }
-    .btn-copy:hover { border-color: var(--purple); color: var(--purple); background: var(--purple-lt); }
-    .btn-copy.copied { background: #E6F7EE; color: #1B7F4A; border-color: #B2DFC7; }
+    .sp-preview-head { display: flex; align-items: center; gap: 8px;
+                       font: 600 11px/1 var(--sp-font-mono);
+                       letter-spacing: .08em; text-transform: uppercase;
+                       color: var(--sp-muted); margin-bottom: 7px; }
+    .sp-preview-head .meta { color: var(--sp-green); font-weight: 500;
+                              text-transform: none; letter-spacing: 0; }
+    .sp-preview { max-height: 320px; overflow-y: auto;
+                  white-space: pre-wrap; word-break: break-word; }
 
-    /* ── Mapping password row ─────────────────── */
-    .mapping-pw-row {
-      margin-top: 10px;
-      display: flex; align-items: center; gap: 10px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-sm); padding: 10px 14px;
-      box-shadow: var(--shadow);
-    }
-    .mapping-pw-row label { font-size: 0.82rem; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
-    .mapping-pw-row input[type=password] {
-      flex: 1; padding: 6px 10px; border-radius: var(--radius-sm);
-      border: 1px solid var(--border); background: var(--bg);
-      color: var(--text); font-size: 0.84rem; outline: none;
-      transition: border-color .15s;
-    }
-    .mapping-pw-row input[type=password]:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(107,47,217,.10); }
-    .mapping-pw-row .hint { font-size: 0.74rem; color: var(--muted); white-space: nowrap; }
+    /* Summary catégories */
+    .sp-summary-cat { background: var(--sp-surface);
+                      border: 1px solid var(--sp-line);
+                      border-radius: var(--sp-r); padding: 12px 14px;
+                      margin-bottom: 10px; }
+    .sp-summary-cat h4 { font: 600 12px/1 var(--sp-font-display);
+                         color: var(--sp-violet); margin: 0 0 8px;
+                         text-transform: uppercase; letter-spacing: .06em; }
+    .sp-summary-cat table { width: 100%; border-collapse: collapse;
+                            font: 12px/1.4 var(--sp-font-mono); }
+    .sp-summary-cat td { padding: 4px 8px 4px 0;
+                         border-bottom: 1px solid var(--sp-line-soft);
+                         color: var(--sp-text); vertical-align: top; }
+    .sp-summary-cat tr:last-child td { border-bottom: 0; }
+    .sp-summary-cat td:first-child { color: var(--sp-violet);
+                                     font-weight: 500; width: 40%; }
 
-    /* ── Session mapping banner ───────────────── */
-    .session-banner {
-      margin-top: 14px;
-      display: flex; align-items: center; gap: 12px;
-      background: #EFF6FF; border: 1px solid #BFDBFE;
-      border-left: 4px solid #3B82F6;
-      border-radius: var(--radius-sm); padding: 11px 16px;
-      font-size: 0.84rem; color: #1D4ED8;
-    }
-    .session-banner span { flex: 1; line-height: 1.55; }
-    .btn-clear-session {
-      padding: 5px 12px; border-radius: var(--radius-sm);
-      border: 1px solid #93C5FD; background: #DBEAFE;
-      color: #1D4ED8; font-size: 0.78rem; cursor: pointer;
-      transition: all .15s; white-space: nowrap;
-    }
-    .btn-clear-session:hover { background: #BFDBFE; }
+    /* Categories grid (sp-toggle-row container) */
+    .sp-cats-container { margin-top: 10px; }
+    .sp-cats-actions { display: flex; gap: 8px; align-items: center;
+                       margin-top: 10px; padding-top: 10px;
+                       border-top: 1px solid var(--sp-line-soft); }
+    .sp-cat-status { font: 500 11px/1 var(--sp-font-ui);
+                     color: var(--sp-muted); margin-left: auto; }
+    .sp-cat-status.ok  { color: var(--sp-green); }
+    .sp-cat-status.err { color: #C53030; }
 
-    /* ── Admin ────────────────────────────────── */
-    .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
-    @media (max-width: 768px) { .admin-grid { grid-template-columns: 1fr; } }
-    .admin-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
-    }
-    .admin-card-header {
-      padding: 12px 18px; border-bottom: 1px solid var(--border);
-      background: #FAFBFC; font-size: 0.85rem; font-weight: 700; color: var(--text);
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .admin-card-body { padding: 16px 18px; }
-    .categories-block {
-      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 14px 18px; margin: 18px 0; box-shadow: var(--shadow);
-    }
-    .categories-block summary {
-      cursor: pointer; font-weight: 600; color: var(--text);
-      font-size: 0.92rem; user-select: none; display: flex; align-items: center; gap: 10px;
-    }
-    .categories-block summary::marker { color: var(--purple); }
-    .cat-badge {
-      background: var(--purple-lt); color: var(--purple-dk);
-      padding: 2px 10px; border-radius: 12px; font-size: 0.72rem; font-weight: 600;
-    }
-    .categories-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 8px 14px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
-    }
-    .cat-toggle {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 0.84rem; color: var(--text); cursor: pointer;
-      padding: 4px 6px; border-radius: 6px;
-    }
-    .cat-toggle:hover { background: var(--bg); }
-    .cat-toggle input { accent-color: var(--purple); cursor: pointer; }
-    .categories-actions {
-      display: flex; gap: 10px; align-items: center;
-      margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
-    }
-    .btn-ghost-sm {
-      background: transparent; border: 1px solid var(--border); color: var(--muted);
-      padding: 4px 12px; border-radius: 6px; font-size: 0.78rem; cursor: pointer;
-      transition: all .15s;
-    }
-    .btn-ghost-sm:hover { border-color: var(--purple); color: var(--purple); }
-    .cat-status { font-size: 0.78rem; color: var(--muted); margin-left: auto; }
-    .cat-status.ok { color: #1B7F4A; }
-    .cat-status.err { color: #e53935; }
-    .wl-help {
-      font-size: 0.78rem; color: var(--muted); margin: 10px 0 8px;
-      padding-top: 10px; border-top: 1px solid var(--border);
-    }
-    .wl-textarea {
-      width: 100%; min-height: 100px; padding: 10px 12px;
-      border: 1px solid var(--border); border-radius: var(--radius-sm);
-      font-family: 'Consolas', 'Courier New', monospace; font-size: 0.84rem;
-      color: var(--text); background: var(--surface); resize: vertical;
-    }
-    .wl-textarea:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 0 2px var(--purple-lt); }
+    /* Whitelist textarea */
+    .sp-textarea { width: 100%; min-height: 100px; padding: 10px 12px;
+                   border: 1px solid var(--sp-line);
+                   border-radius: var(--sp-r-sm);
+                   font: 13px/1.55 var(--sp-font-mono);
+                   color: var(--sp-text); background: var(--sp-surface);
+                   resize: vertical; }
+    .sp-textarea:focus { outline: none; border-color: var(--sp-violet);
+                         box-shadow: 0 0 0 3px var(--sp-violet-tint); }
 
-    .admin-info-row {
-      display: flex; justify-content: space-between; align-items: flex-start;
-      padding: 7px 0; border-bottom: 1px solid #f3f4f6; font-size: 0.83rem;
-    }
-    .admin-info-row:last-child { border-bottom: none; }
-    .admin-info-row .key { color: var(--muted); flex-shrink: 0; padding-right: 10px; }
-    .admin-info-row .val { color: var(--text); font-family: monospace; font-size: 0.78rem; text-align: right; word-break: break-all; }
-    .log-viewer {
-      background: #1e1e2e; border-radius: var(--radius-sm);
-      padding: 12px 14px; font-family: 'Cascadia Code','Consolas',monospace; font-size: 0.74rem;
-      color: #a6adc8; line-height: 1.6; max-height: 320px; overflow-y: auto;
-      white-space: pre-wrap; word-break: break-word;
-      border: 1px solid #313244;
-    }
-    .log-viewer::-webkit-scrollbar { width: 5px; }
-    .log-viewer::-webkit-scrollbar-thumb { background: #45475a; border-radius: 3px; }
-    .btn-danger {
-      padding: 8px 18px; border-radius: var(--radius-sm);
-      background: #fee2e2; border: 1px solid #fca5a5;
-      color: #dc2626; font-size: 0.85rem; font-weight: 600;
-      cursor: pointer; transition: all .15s;
-    }
-    .btn-danger:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
-    .admin-action-msg { font-size: .8rem; margin-top: 8px; display: none; }
+    /* Session banner */
+    .sp-session-banner { display: none; align-items: center; gap: 10px;
+                         background: var(--sp-violet-tint);
+                         border: 1px solid #D9CCEF;
+                         border-radius: var(--sp-r); padding: 11px 14px;
+                         font: 500 13px/1.4 var(--sp-font-ui); color: #5B4A7A; }
+    .sp-session-banner button { margin-left: auto; background: transparent;
+                                 border: 0; color: var(--sp-violet);
+                                 cursor: pointer; font: 600 13px/1 var(--sp-font-ui); }
+
+    /* Mapping password row */
+    .sp-pw-row { display: flex; align-items: center; gap: 12px;
+                 padding: 12px 14px; background: var(--sp-surface);
+                 border: 1px solid var(--sp-line);
+                 border-radius: var(--sp-r); }
+    .sp-pw-row label { font: 600 13px/1 var(--sp-font-ui);
+                       color: var(--sp-ink); flex-shrink: 0; }
+    .sp-pw-row input { flex: 1; padding: 9px 11px;
+                       border: 1px solid var(--sp-line);
+                       border-radius: var(--sp-r-sm);
+                       font: 13px/1 var(--sp-font-mono); color: var(--sp-text); }
+    .sp-pw-row input:focus { outline: none; border-color: var(--sp-violet);
+                              box-shadow: 0 0 0 3px var(--sp-violet-tint); }
+    .sp-pw-row .hint { font: 500 11px/1 var(--sp-font-ui);
+                       color: var(--sp-muted); flex-shrink: 0; }
+
+    /* Admin */
+    .sp-admin-grid { display: grid; grid-template-columns: 1fr 1fr;
+                     gap: 14px; }
+    @media (max-width: 720px) { .sp-admin-grid { grid-template-columns: 1fr; } }
+    .sp-admin-card { background: var(--sp-surface);
+                     border: 1px solid var(--sp-line);
+                     border-radius: var(--sp-r); padding: 14px 16px; }
+    .sp-admin-card h3 { font: 600 13px/1 var(--sp-font-display);
+                         color: var(--sp-ink); margin: 0 0 12px;
+                         display: flex; align-items: center; gap: 8px; }
+    .sp-admin-row { display: flex; justify-content: space-between; gap: 12px;
+                    padding: 6px 0; border-bottom: 1px solid var(--sp-line-soft);
+                    font: 12px/1.4 var(--sp-font-ui); }
+    .sp-admin-row:last-child { border-bottom: 0; }
+    .sp-admin-row .k { color: var(--sp-muted); }
+    .sp-admin-row .v { color: var(--sp-text); font-family: var(--sp-font-mono);
+                       text-align: right; word-break: break-all; }
+    .sp-log-viewer { background: #1A1726; border-radius: var(--sp-r-sm);
+                     padding: 12px 14px; font: 11px/1.65 var(--sp-font-mono);
+                     color: #C7C0DB; max-height: 320px; overflow-y: auto;
+                     white-space: pre-wrap; word-break: break-word; }
+    .sp-btn--danger { background: #FBEAEA; color: #8E1A1A;
+                       border-color: #F1C2C2; }
+    .sp-btn--danger:hover { background: #8E1A1A; color: #fff;
+                             border-color: #8E1A1A; }
+    .sp-admin-msg { display: none; font: 500 12px/1 var(--sp-font-ui);
+                    margin-top: 8px; }
+    .sp-admin-msg.ok  { color: var(--sp-green); }
+    .sp-admin-msg.err { color: #C53030; }
+
+    /* Petits boutons */
+    .sp-btn--sm { padding: 7px 12px; font: 500 12px/1 var(--sp-font-ui); }
+
+    /* Bouton « copier » avec état Copié */
+    .sp-btn.copied { background: #ECF7F1 !important; color: var(--sp-green) !important;
+                     border-color: #B2DFC7 !important; }
   </style>
 </head>
 <body>
 
-<header>
-  <div class="logo">AT</div>
-  <div>
-    <h1>Anonymiseur de données sensibles</h1>
-    <p>Protégez vos données personnelles avant de les soumettre à un outil IA</p>
-  </div>
-  <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
-    <span id="header-ocr-badge" style="font-size:.78rem;padding:4px 10px;border-radius:20px;font-weight:600;cursor:pointer"
+<div class="sp-shell sp-app">
+
+  <!-- ════════════════════════════════════════════════
+       Header — Logo + Nav + Badge OCR
+  ══════════════════════════════════════════════════ -->
+  <header class="sp-header">
+    <div class="sp-brand">
+      <div class="sp-logo">AT</div>
+      <div>
+        <div class="sp-brand-name">Safe Prompt</div>
+        <div class="sp-brand-sub">par Action Telecom</div>
+      </div>
+    </div>
+    <nav class="sp-nav">
+      <button class="tab-btn is-active" data-tab="anon">Anonymiser</button>
+      <button class="tab-btn" data-tab="deanon">Dé-anonymiser</button>
+      <button class="tab-btn" data-tab="admin">Admin</button>
+    </nav>
+    <span id="header-ocr-badge" class="sp-ocr-badge"
           onclick="openOcrModal()" title="Configurer Tesseract OCR"></span>
-  </div>
-</header>
+  </header>
 
-<!-- ══ Modale configuration OCR ══════════════════════ -->
-<div class="modal-backdrop" id="ocr-modal">
-  <div class="modal">
-    <h2>⚙ Configuration Tesseract OCR</h2>
-    <p>Tesseract est requis pour analyser les <strong>images</strong> et les <strong>PDF scannés</strong>.
-       Il s'installe séparément (gratuit, open-source).</p>
+  <!-- ════════════════════════════════════════════════
+       Modale Tesseract OCR
+  ══════════════════════════════════════════════════ -->
+  <div class="modal-backdrop" id="ocr-modal">
+    <div class="modal">
+      <h2>⚙ Configuration Tesseract OCR</h2>
+      <p>Tesseract est requis pour analyser les <strong>images</strong> et les
+         <strong>PDF scannés</strong>. Il s'installe séparément (gratuit, open-source).</p>
 
-    <div class="steps">
-      <ol>
-        <li>Téléchargez l'installeur Windows :<br>
-            <a href="https://github.com/UB-Mannheim/tesseract/wiki" target="_blank">
-              https://github.com/UB-Mannheim/tesseract/wiki
-            </a>
-        </li>
-        <li>Lancez l'installeur — cochez <strong>"French"</strong> dans les langues.</li>
-        <li>Notez le dossier d'installation (ex : <code>C:\Program Files\Tesseract-OCR</code>).</li>
-        <li>Collez le chemin complet vers <strong>tesseract.exe</strong> ci-dessous.</li>
-      </ol>
+      <div class="steps">
+        <ol>
+          <li>Téléchargez l'installeur Windows :<br>
+              <a href="https://github.com/UB-Mannheim/tesseract/wiki" target="_blank">
+                https://github.com/UB-Mannheim/tesseract/wiki
+              </a>
+          </li>
+          <li>Lancez l'installeur — cochez <strong>"French"</strong> dans les langues.</li>
+          <li>Notez le dossier d'installation (ex : <code>C:\Program Files\Tesseract-OCR</code>).</li>
+          <li>Collez le chemin complet vers <strong>tesseract.exe</strong> ci-dessous.</li>
+        </ol>
+      </div>
+
+      <label for="tesseract-path-input">Chemin vers tesseract.exe</label>
+      <input type="text" id="tesseract-path-input"
+             placeholder="C:\Program Files\Tesseract-OCR\tesseract.exe" />
+      <div id="ocr-modal-msg" class="msg"></div>
+
+      <div class="modal-footer">
+        <button class="sp-btn sp-btn--ghost" onclick="closeOcrModal()">Fermer</button>
+        <button class="sp-btn sp-btn--primary" onclick="saveTesseractPath()">✔ Valider</button>
+      </div>
     </div>
-
-    <label for="tesseract-path-input">Chemin vers tesseract.exe</label>
-    <input type="text" id="tesseract-path-input"
-           placeholder="C:\Program Files\Tesseract-OCR\tesseract.exe" />
-    <div id="ocr-modal-msg" style="display:none" class="msg"></div>
-
-    <div class="modal-footer">
-      <button class="btn-secondary" onclick="closeOcrModal()">Fermer</button>
-      <button class="btn-primary" onclick="saveTesseractPath()">✔ Valider</button>
-    </div>
-  </div>
-</div>
-
-<main>
-
-  <!-- ── Tabs ─────────────────────────────────── -->
-  <div class="tabs">
-    <button class="tab-btn active" data-tab="anon">Anonymiser</button>
-    <button class="tab-btn" data-tab="deanon">Dé-anonymiser</button>
-    <button class="tab-btn" data-tab="admin">⚙ Admin</button>
   </div>
 
-  <!-- ══════════════════════════════════════════ -->
-  <!-- TAB : ANONYMISER                           -->
-  <!-- ══════════════════════════════════════════ -->
-  <div class="tab-panel active" id="tab-anon">
+  <!-- ════════════════════════════════════════════════
+       TAB : ANONYMISER
+  ══════════════════════════════════════════════════ -->
+  <div class="sp-tab-panel is-active" id="tab-anon">
 
-    <div class="upload-area" id="drop-zone">
-      <input type="file" id="file-input" accept=".txt,.log,.csv,.json,.xml,.html,.md,.cfg,.ini,.conf,.yaml,.yml,.toml,.pdf,.png,.jpg,.jpeg,.bmp,.tiff,.tif,.webp,.gif" />
-      <div class="upload-icon" id="upload-icon">📄</div>
-      <h2>Glissez un fichier ici ou cliquez pour sélectionner</h2>
-      <p><strong>Texte :</strong> .txt .log .csv .json .xml .yaml .toml…<br>
-         <strong>Document :</strong> .pdf (natif ou scanné)<br>
-         <strong>Image :</strong> .png .jpg .jpeg .bmp .tiff .webp (OCR automatique)</p>
-      <p style="margin-top:6px;font-size:0.75rem;font-weight:500" id="ocr-status-badge"></p>
-      <div class="file-name" id="file-label"></div>
+    <div class="sp-steps" id="anon-steps">
+      <div class="sp-step sp-step--active" data-step="1">
+        <div class="sp-step-dot">1</div>
+        <span class="sp-step-label">Déposer</span>
+      </div>
+      <div class="sp-step-line" data-line="1-2"></div>
+      <div class="sp-step sp-step--todo" data-step="2">
+        <div class="sp-step-dot">2</div>
+        <span class="sp-step-label">Personnaliser</span>
+      </div>
+      <div class="sp-step-line" data-line="2-3"></div>
+      <div class="sp-step sp-step--todo" data-step="3">
+        <div class="sp-step-dot">3</div>
+        <span class="sp-step-label">Récupérer</span>
+      </div>
     </div>
 
-    <div class="mapping-row">
-      <span>🗂️</span>
-      <label>Mapping Json existant (optionnel)</label>
-      <div class="mapping-file-name" id="mapping-label">Aucun</div>
-      <div class="btn-ghost">
+    <div class="sp-panel">
+
+      <!-- Drop zone -->
+      <div class="sp-dropzone" id="drop-zone">
+        <input type="file" id="file-input"
+               accept=".txt,.log,.csv,.json,.xml,.html,.md,.cfg,.ini,.conf,.yaml,.yml,.toml,.pdf,.png,.jpg,.jpeg,.bmp,.tiff,.tif,.webp,.gif" />
+        <div class="sp-dropzone-icon" id="upload-icon">📥</div>
+        <div class="sp-dropzone-title">Glissez votre fichier ici ou cliquez pour parcourir</div>
+        <div class="sp-dropzone-hint">Texte, PDF natif ou scanné, image (OCR auto) — 50 Mo max</div>
+        <div class="sp-dropzone-hint" id="ocr-status-badge" style="margin-top:8px"></div>
+        <div class="sp-dropzone-hint" id="file-label" style="margin-top:10px;color:var(--sp-violet);font-weight:600"></div>
+      </div>
+
+      <!-- Mapping optionnel -->
+      <div class="sp-file">
+        <div class="sp-file-ic">
+          <svg width="18" height="18" viewBox="0 0 24 24" class="ic" stroke="currentColor">
+            <path d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+          </svg>
+        </div>
+        <div class="sp-file-text">
+          <div class="sp-file-name">Mapping JSON existant
+            <span style="color:var(--sp-muted);font-weight:500">(optionnel)</span></div>
+          <div class="sp-file-meta" id="mapping-label">Aucun</div>
+        </div>
+        <label class="sp-file-action" for="mapping-input">Choisir</label>
         <input type="file" id="mapping-input" accept=".json" />
-        Choisir mapping.json
       </div>
-    </div>
 
-    <details class="categories-block" id="categories-block">
-      <summary>⚙️ Catégories à anonymiser <span id="cat-summary-count" class="cat-badge"></span></summary>
-      <div class="categories-grid" id="categories-grid">Chargement…</div>
-      <div class="categories-actions">
-        <button type="button" class="btn-ghost-sm" onclick="setAllCategories(true)">Tout activer</button>
-        <button type="button" class="btn-ghost-sm" onclick="setAllCategories(false)">Tout désactiver</button>
-        <span id="cat-save-status" class="cat-status"></span>
-      </div>
-    </details>
-
-    <details class="categories-block" id="whitelist-block">
-      <summary>🛡️ Liste blanche NER <span id="wl-count" class="cat-badge"></span></summary>
-      <p class="wl-help">
-        Termes à ne jamais anonymiser (noms d'entreprises clientes connues, marques, produits…).
-        Une entrée par ligne. Insensible à la casse, comparaison avec limites de mot.
-      </p>
-      <textarea id="ner-whitelist-input" class="wl-textarea" rows="6"
-                placeholder="Action Telecom&#10;Microsoft&#10;Sophos"></textarea>
-      <div class="categories-actions">
-        <span id="wl-save-status" class="cat-status"></span>
-      </div>
-    </details>
-
-    <div class="actions">
-      <button class="btn-primary" id="btn-anonymize" disabled>🔒 Anonymiser</button>
-      <button class="btn-secondary" id="btn-reset">Réinitialiser</button>
-    </div>
-
-    <div id="loader"><div class="spinner"></div> Analyse en cours…</div>
-    <div id="error-box"></div>
-
-    <div id="results">
-      <div class="results-grid">
-        <div class="result-card">
-          <div class="result-card-header">
-            <span>Texte extrait</span>
-            <span id="extraction-method" style="display:none;font-size:.72rem;color:#1B7F4A;font-weight:600"></span>
-            <div class="badge badge-original">ORIGINAL</div>
-          </div>
-          <div class="result-text" id="original-text"></div>
+      <!-- Catégories -->
+      <div>
+        <div class="sp-section-title">Que faut-il masquer&nbsp;?</div>
+        <div class="sp-section-help">
+          Nous avons présélectionné les informations sensibles les plus courantes.
+          <span id="cat-summary-count" style="color:var(--sp-violet);font-weight:600"></span>
         </div>
-        <div class="result-card">
-          <div class="result-card-header">
-            <span>Texte anonymisé</span>
-            <div style="display:flex;align-items:center;gap:8px">
-              <button class="btn-copy" id="btn-copy-anon" onclick="copyEl('anon-text','btn-copy-anon')">📋 Copier</button>
-              <div class="badge badge-anon">ANONYMISÉ</div>
+        <div id="categories-grid" class="sp-cats-container">Chargement…</div>
+        <div class="sp-cats-actions">
+          <button type="button" class="sp-btn sp-btn--ghost sp-btn--sm"
+                  onclick="setAllCategories(true)">Tout activer</button>
+          <button type="button" class="sp-btn sp-btn--ghost sp-btn--sm"
+                  onclick="setAllCategories(false)">Tout désactiver</button>
+          <span id="cat-save-status" class="sp-cat-status"></span>
+        </div>
+      </div>
+
+      <!-- Liste blanche -->
+      <div>
+        <div class="sp-section-title">Liste blanche</div>
+        <div class="sp-section-help">
+          Ces termes ne seront jamais remplacés. Une entrée par ligne, insensible à la casse.
+          <span id="wl-count" style="color:var(--sp-violet);font-weight:600"></span>
+        </div>
+        <textarea id="ner-whitelist-input" class="sp-textarea" rows="5"
+                  style="margin-top:10px"
+                  placeholder="Action Telecom&#10;Microsoft&#10;Sophos"></textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:6px">
+          <span id="wl-save-status" class="sp-cat-status"></span>
+        </div>
+      </div>
+
+      <!-- Banner confidentialité -->
+      <div class="sp-note sp-note--info">
+        <svg width="18" height="18" viewBox="0 0 24 24" class="ic" stroke="var(--sp-violet)">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        Le traitement a lieu sur votre poste. Vos données ne sont jamais envoyées à un serveur.
+      </div>
+
+      <!-- Erreurs / loader -->
+      <div id="error-box" class="sp-error"></div>
+      <div id="loader" class="sp-loader">
+        <div class="sp-spinner"></div> Analyse en cours…
+      </div>
+
+      <!-- Actions principales -->
+      <div style="display:flex;gap:10px">
+        <button class="sp-btn sp-btn--primary sp-btn--block" id="btn-anonymize" disabled
+                style="flex:1">
+          <svg width="16" height="16" viewBox="0 0 24 24" class="ic" stroke="#fff">
+            <rect x="4" y="11" width="16" height="9" rx="2"/>
+            <path d="M8 11V7a4 4 0 018 0v4"/>
+          </svg>
+          Anonymiser en toute sécurité
+        </button>
+        <button class="sp-btn sp-btn--ghost" id="btn-reset" type="button">Réinitialiser</button>
+      </div>
+
+      <!-- ════════════════ RÉSULTAT ════════════════ -->
+      <div id="results" style="display:none">
+        <div class="sp-result" style="margin-top:8px">
+          <div class="sp-result-ic">
+            <svg width="28" height="28" viewBox="0 0 24 24" class="ic"
+                 stroke="currentColor" stroke-width="2.4">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M8 12l3 3 5-6"/>
+            </svg>
+          </div>
+          <h2>Votre texte est prêt</h2>
+          <p><strong id="summary-count">…</strong> ont été masquées.
+             Vous pouvez le copier dans votre outil IA en toute sérénité.</p>
+        </div>
+
+        <div class="sp-preview-grid" style="margin-top:18px">
+          <div>
+            <div class="sp-preview-head">
+              <span>Texte extrait</span>
+              <span class="meta" id="extraction-method" style="display:none"></span>
             </div>
+            <div class="sp-preview" id="original-text"></div>
           </div>
-          <div class="result-text" id="anon-text"></div>
+          <div>
+            <div class="sp-preview-head">
+              <span>Anonymisé</span>
+              <button id="btn-copy-anon" class="sp-btn sp-btn--ghost sp-btn--sm"
+                      style="margin-left:auto"
+                      onclick="copyEl('anon-text','btn-copy-anon')">📋 Copier</button>
+            </div>
+            <div class="sp-preview" id="anon-text"></div>
+          </div>
+        </div>
+
+        <div id="summary-section" style="margin-top:18px">
+          <div class="sp-section-help" style="margin-bottom:10px">
+            Données détectées et remplacées
+          </div>
+          <div id="summary-body"></div>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+          <button class="sp-btn sp-btn--primary" id="btn-dl-anon" style="flex:1;min-width:220px">
+            ⬇ Texte anonymisé (.txt)
+          </button>
+          <button class="sp-btn sp-btn--ghost" id="btn-dl-mapping">⬇ Mapping JSON</button>
+          <button id="btn-copy-anon2" class="sp-btn sp-btn--ghost"
+                  onclick="copyEl('anon-text','btn-copy-anon2')">📋 Copier</button>
+        </div>
+
+        <div class="sp-pw-row" style="margin-top:10px">
+          <label for="mapping-pw">🔒 Chiffrer le mapping</label>
+          <input type="password" id="mapping-pw"
+                 placeholder="Mot de passe (laisser vide = non chiffré)"
+                 autocomplete="new-password" />
+          <span class="hint">AES-256-GCM</span>
+        </div>
+
+        <div class="sp-note sp-note--warn" style="margin-top:12px">
+          <svg width="16" height="16" viewBox="0 0 24 24" class="ic" stroke="currentColor">
+            <path d="M12 9v4M12 17h.01M10.3 3.9L2 18a2 2 0 001.7 3h16.6A2 2 0 0022 18L13.7 3.9a2 2 0 00-3.4 0z"/>
+          </svg>
+          Téléchargez aussi le fichier de correspondance pour pouvoir restaurer les données plus tard.
         </div>
       </div>
 
-      <div id="summary-section">
-        <div class="section-header">
-          <h3>📋 Données détectées et remplacées</h3>
-          <span id="summary-count"></span>
-        </div>
-        <div id="summary-body"></div>
-      </div>
-
-      <div class="download-bar">
-        <button class="btn-primary" id="btn-dl-anon">⬇ Télécharger le fichier anonymisé</button>
-        <button class="btn-secondary" id="btn-dl-mapping">⬇ Télécharger mapping.json</button>
-        <button class="btn-copy" id="btn-copy-anon2" onclick="copyEl('anon-text','btn-copy-anon2')" style="padding:8px 14px;font-size:.84rem">📋 Copier le texte</button>
-      </div>
-      <div class="mapping-pw-row">
-        <label for="mapping-pw">🔒 Chiffrer le mapping :</label>
-        <input type="password" id="mapping-pw" placeholder="Mot de passe (laisser vide = non chiffré)" autocomplete="new-password" />
-        <span class="hint">AES-256-GCM</span>
-      </div>
     </div>
-
   </div>
 
-  <!-- ══════════════════════════════════════════ -->
-  <!-- TAB : DÉ-ANONYMISER                        -->
-  <!-- ══════════════════════════════════════════ -->
-  <div class="tab-panel" id="tab-deanon">
+  <!-- ════════════════════════════════════════════════
+       TAB : DÉ-ANONYMISER
+  ══════════════════════════════════════════════════ -->
+  <div class="sp-tab-panel" id="tab-deanon">
+    <div class="sp-panel">
 
-    <div class="upload-area" id="drop-zone-da">
-      <input type="file" id="file-input-da" accept=".txt,.log,.csv,.json,.xml,.html,.md,.cfg,.ini,.conf,.yaml,.yml,.toml,.pdf,.png,.jpg,.jpeg,.bmp,.tiff,.tif,.webp,.gif" />
-      <div class="upload-icon">🔓</div>
-      <h2>Glissez le fichier anonymisé ici</h2>
-      <p>Texte, PDF ou image — mêmes formats que l'anonymisation</p>
-      <div class="file-name" id="file-label-da"></div>
-    </div>
-
-    <div class="mapping-row">
-      <span>🗂️</span>
-      <label>Fichier mapping.json <strong style="color:#e53935">obligatoire</strong></label>
-      <div class="mapping-file-name" id="mapping-label-da">Aucun</div>
-      <div class="btn-ghost">
-        <input type="file" id="mapping-input-da" accept=".json" />
-        Choisir mapping.json
-      </div>
-    </div>
-
-    <div class="session-banner" id="session-banner" style="display:none">
-      <span>⚡ Mapping de session chargé automatiquement —
-        <strong id="session-map-count">0</strong> élément(s) prêt(s) à restaurer.
-        Vous pouvez soumettre directement ou choisir un autre fichier mapping.</span>
-      <button class="btn-clear-session" onclick="clearSessionMapping()">✕ Effacer</button>
-    </div>
-
-    <div class="mapping-pw-row" id="mapping-pw-da-row" style="display:none">
-      <label for="mapping-pw-da">🔒 Mot de passe (mapping chiffré) :</label>
-      <input type="password" id="mapping-pw-da" placeholder="Mot de passe" autocomplete="off" />
-    </div>
-
-    <div class="actions">
-      <button class="btn-primary" id="btn-deanonymize" disabled>🔓 Dé-anonymiser</button>
-      <button class="btn-secondary" id="btn-reset-da">Réinitialiser</button>
-    </div>
-
-    <div id="loader-da"><div class="spinner"></div> Traitement…</div>
-    <div id="error-box-da" style="display:none;margin-top:20px;background:#2a1a1a;border:1px solid #7f2020;border-radius:10px;padding:14px 18px;color:#f87171;font-size:.88rem;"></div>
-
-    <div id="results-da" style="display:none;margin-top:32px;">
-      <div class="results-grid">
-        <div class="result-card">
-          <div class="result-card-header">
-            <span>Texte anonymisé (entrée)</span>
-            <div class="badge badge-anon">ENTRÉE</div>
-          </div>
-          <div class="result-text" id="original-text-da"></div>
+      <div>
+        <div class="sp-numstep">
+          <span class="sp-num">1</span><span>Déposez le fichier anonymisé</span>
         </div>
-        <div class="result-card">
-          <div class="result-card-header">
-            <span>Texte restauré</span>
-            <div style="display:flex;align-items:center;gap:8px">
-              <button class="btn-copy" id="btn-copy-da" onclick="copyEl('anon-text-da','btn-copy-da')">📋 Copier</button>
-              <div class="badge badge-original">RESTAURÉ</div>
-            </div>
-          </div>
-          <div class="result-text" id="anon-text-da"></div>
+        <div class="sp-dropzone" id="drop-zone-da">
+          <input type="file" id="file-input-da"
+                 accept=".txt,.log,.csv,.json,.xml,.html,.md,.cfg,.ini,.conf,.yaml,.yml,.toml,.pdf,.png,.jpg,.jpeg,.bmp,.tiff,.tif,.webp,.gif" />
+          <div class="sp-dropzone-icon">🔓</div>
+          <div class="sp-dropzone-title">Glissez le fichier anonymisé ici</div>
+          <div class="sp-dropzone-hint">Texte, PDF ou image — mêmes formats que l'anonymisation</div>
+          <div class="sp-dropzone-hint" id="file-label-da" style="margin-top:10px;color:var(--sp-violet);font-weight:600"></div>
         </div>
       </div>
-      <div class="download-bar">
-        <button class="btn-primary" id="btn-dl-da">⬇ Télécharger le fichier restauré</button>
-        <button class="btn-copy" id="btn-copy-da2" onclick="copyEl('anon-text-da','btn-copy-da2')" style="padding:8px 14px;font-size:.84rem">📋 Copier le texte</button>
-      </div>
-    </div>
 
+      <div>
+        <div class="sp-numstep">
+          <span class="sp-num">2</span><span>Ajoutez le fichier de correspondance</span>
+        </div>
+        <div class="sp-file">
+          <div class="sp-file-ic">
+            <svg width="18" height="18" viewBox="0 0 24 24" class="ic" stroke="currentColor">
+              <path d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+            </svg>
+          </div>
+          <div class="sp-file-text">
+            <div class="sp-file-name">mapping.json
+              <strong style="color:#C24A0E;font-weight:600">obligatoire</strong></div>
+            <div class="sp-file-meta" id="mapping-label-da">Aucun</div>
+          </div>
+          <label class="sp-file-action" for="mapping-input-da">Choisir</label>
+          <input type="file" id="mapping-input-da" accept=".json" />
+        </div>
+      </div>
+
+      <div class="sp-session-banner" id="session-banner">
+        <svg width="18" height="18" viewBox="0 0 24 24" class="ic" stroke="var(--sp-violet)">
+          <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/>
+        </svg>
+        <span>Mapping de session chargé automatiquement —
+          <strong id="session-map-count">0</strong> clé(s) prêtes à restaurer.</span>
+        <button type="button" onclick="clearSessionMapping()">✕ Effacer</button>
+      </div>
+
+      <div class="sp-pw-row" id="mapping-pw-da-row" style="display:none">
+        <label for="mapping-pw-da">🔒 Mot de passe</label>
+        <input type="password" id="mapping-pw-da"
+               placeholder="Mot de passe du mapping chiffré" autocomplete="off" />
+      </div>
+
+      <div id="error-box-da" class="sp-error"></div>
+      <div id="loader-da" class="sp-loader">
+        <div class="sp-spinner"></div> Traitement…
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <button class="sp-btn sp-btn--primary sp-btn--block" id="btn-deanonymize" disabled
+                style="flex:1">
+          <svg width="16" height="16" viewBox="0 0 24 24" class="ic" stroke="#fff">
+            <path d="M3 12a9 9 0 019-9 9 9 0 016.7 3M21 12a9 9 0 01-9 9 9 9 0 01-6.7-3"/>
+            <path d="M21 3v5h-5M3 21v-5h5"/>
+          </svg>
+          Restaurer mes données
+        </button>
+        <button class="sp-btn sp-btn--ghost" id="btn-reset-da" type="button">Réinitialiser</button>
+      </div>
+
+      <div id="results-da" style="display:none">
+        <div class="sp-result" style="margin-top:8px">
+          <div class="sp-result-ic">
+            <svg width="28" height="28" viewBox="0 0 24 24" class="ic"
+                 stroke="currentColor" stroke-width="2.4">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M8 12l3 3 5-6"/>
+            </svg>
+          </div>
+          <h2>Données restaurées</h2>
+          <p>Les marqueurs ont été remplacés par les valeurs originales.</p>
+        </div>
+        <div class="sp-preview-grid" style="margin-top:14px">
+          <div>
+            <div class="sp-preview-head"><span>Texte reçu</span></div>
+            <div class="sp-preview" id="original-text-da"></div>
+          </div>
+          <div>
+            <div class="sp-preview-head"><span>Restauré</span></div>
+            <div class="sp-preview" id="anon-text-da"></div>
+          </div>
+        </div>
+        <button class="sp-btn sp-btn--primary sp-btn--block" id="btn-dl-da" style="margin-top:14px">
+          ⬇ Télécharger le texte restauré
+        </button>
+      </div>
+
+    </div>
   </div>
 
-  <!-- ══════════════════════════════════════════ -->
-  <!-- TAB : ADMIN                                -->
-  <!-- ══════════════════════════════════════════ -->
-  <div class="tab-panel" id="tab-admin">
+  <!-- ════════════════════════════════════════════════
+       TAB : ADMIN
+  ══════════════════════════════════════════════════ -->
+  <div class="sp-tab-panel" id="tab-admin">
+    <div class="sp-panel">
 
-    <div class="admin-grid">
-      <div class="admin-card">
-        <div class="admin-card-header">📊 Informations système</div>
-        <div class="admin-card-body" id="admin-info-body">
-          <div style="color:var(--muted);font-size:.85rem">Chargement…</div>
+      <div class="sp-admin-grid">
+        <div class="sp-admin-card">
+          <h3>📊 Informations système</h3>
+          <div id="admin-info-body">
+            <div style="color:var(--sp-muted);font-size:12px">Chargement…</div>
+          </div>
         </div>
-      </div>
-
-      <div class="admin-card">
-        <div class="admin-card-header">🛠️ Maintenance</div>
-        <div class="admin-card-body">
-          <p style="font-size:.83rem;color:var(--muted);margin-bottom:16px;line-height:1.65">
+        <div class="sp-admin-card">
+          <h3>🛠️ Maintenance</h3>
+          <p style="font-size:12px;color:var(--sp-muted);margin:0 0 12px;line-height:1.55">
             Purgez les logs ou réinitialisez la configuration (chemin Tesseract, etc.).
             La réinitialisation nécessite un redémarrage de l'application.
           </p>
-          <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;flex-direction:column;gap:12px">
             <div>
-              <button class="btn-danger" onclick="adminPurgeLogs()">🗑️ Purger les logs</button>
-              <div class="admin-action-msg" id="admin-purge-msg"></div>
+              <button class="sp-btn sp-btn--danger" onclick="adminPurgeLogs()">
+                🗑️ Purger les logs
+              </button>
+              <div class="sp-admin-msg" id="admin-purge-msg"></div>
             </div>
             <div>
-              <button class="btn-danger" onclick="adminResetConfig()">↩️ Réinitialiser la config</button>
-              <div class="admin-action-msg" id="admin-reset-msg"></div>
+              <button class="sp-btn sp-btn--danger" onclick="adminResetConfig()">
+                ↩️ Réinitialiser la config
+              </button>
+              <div class="sp-admin-msg" id="admin-reset-msg"></div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="admin-card">
-      <div class="admin-card-header">
-        <span>📄 Logs récents (100 dernières lignes)</span>
-        <button class="btn-ghost" onclick="loadAdminInfo()" style="font-size:.78rem;padding:4px 10px">↻ Rafraîchir</button>
+      <div class="sp-admin-card" style="margin-top:14px">
+        <h3>
+          📄 Logs récents (100 dernières lignes)
+          <button class="sp-btn sp-btn--ghost sp-btn--sm" onclick="loadAdminInfo()"
+                  style="margin-left:auto">↻ Rafraîchir</button>
+        </h3>
+        <div class="sp-log-viewer" id="admin-log-viewer">Chargement…</div>
       </div>
-      <div class="admin-card-body">
-        <div class="log-viewer" id="admin-log-viewer">Chargement…</div>
-      </div>
-    </div>
 
+    </div>
   </div>
 
-</main>
+</div>
 
 <script>
-/* ────────────────────────────────────────────
-   OCR status on load
-──────────────────────────────────────────── */
-fetch('/status').then(r => r.json()).then(d => {
-  const badge = document.getElementById('ocr-status-badge');
-  if (badge) {
-    badge.textContent = d.ocr_available
-      ? '✅ ' + d.ocr_status
-      : '⚠️ ' + d.ocr_status;
-    badge.style.color = d.ocr_available ? '#1B7F4A' : '#92550A';
-  }
-}).catch(() => {});
+/* ════════════════════════════════════════════════
+   Catalogue catégories + couleurs (utilisé par UI + highlightTags)
+═══════════════════════════════════════════════════ */
+const CATEGORY_LABELS = {
+  CB: 'Carte bancaire', NIR: 'N° sécu', IBAN: 'IBAN',
+  SIRET: 'SIRET', SIREN: 'SIREN', EMAIL: 'E-mail',
+  MAC: 'Adresse MAC', IPv4: 'IPv4', IPv6: 'IPv6',
+  TEL: 'Téléphone', HOSTNAME: 'Hostname', CODE_POSTAL: 'Code postal',
+  PORT: 'Port réseau', DATE_NAISSANCE: 'Date de naissance',
+  PERSONNE: 'Personne (NER)', ORGANISATION: 'Organisation (NER)',
+  LIEU: 'Lieu (NER)', DIVERS: 'Divers (NER)',
+};
+const CATEGORY_DESC = {
+  CB: 'Numéros de carte bancaire (PAN)',
+  NIR: 'Numéro de sécurité sociale',
+  IBAN: 'Identifiants bancaires',
+  SIRET: 'Numéro SIRET (14 chiffres)',
+  SIREN: 'Numéro SIREN (9 chiffres)',
+  EMAIL: 'Adresses e-mail',
+  MAC: 'Adresses MAC',
+  IPv4: 'Adresses IPv4',
+  IPv6: 'Adresses IPv6',
+  TEL: 'Numéros de téléphone (FR)',
+  HOSTNAME: 'Noms d\'hôte internes',
+  CODE_POSTAL: 'Codes postaux FR',
+  PORT: 'Ports réseau',
+  DATE_NAISSANCE: 'Dates de naissance',
+  PERSONNE: 'Prénoms, noms de famille',
+  ORGANISATION: 'Sociétés, noms de clients',
+  LIEU: 'Villes, adresses postales',
+  DIVERS: 'Autres entités (NER)',
+};
+/* Map catégorie → classe .sp-ent (palette étendue, un ton par PII) */
+const ENT_CLASS = {
+  PERSONNE:       'personne',
+  ORGANISATION:   'org',
+  LIEU:           'adresse',
+  EMAIL:          'email',
+  TEL:            'tel',
+  TEL_FR:         'tel',
+  IBAN:           'iban',
+  CB:             'cb',
+  NIR:            'nir',
+  SIRET:          'siret',
+  SIREN:          'siren',
+  DATE_NAISSANCE: 'date',
+  HOSTNAME:       'hostname',
+  IPv4:           'ipv4',
+  IPv6:           'ipv6',
+  MAC:            'mac',
+  PORT:           'port',
+  CODE_POSTAL:    'cp',
+  DIVERS:         'divers',
+};
+/* Valeurs CSS pour les pastilles .sp-dot (catégories) */
+const ENT_COLOR_VAR = {
+  personne: 'var(--sp-c-personne)', org: 'var(--sp-c-org)',
+  adresse: 'var(--sp-c-adresse)',   email: 'var(--sp-c-email)',
+  tel: 'var(--sp-c-tel)',           iban: 'var(--sp-c-iban)',
+  cb: 'var(--sp-c-cb)',             nir: 'var(--sp-c-nir)',
+  siret: 'var(--sp-c-siret)',       siren: 'var(--sp-c-siren)',
+  date: 'var(--sp-c-date)',         hostname: 'var(--sp-c-hostname)',
+  ipv4: 'var(--sp-c-ipv4)',         ipv6: 'var(--sp-c-ipv6)',
+  mac: 'var(--sp-c-mac)',           port: 'var(--sp-c-port)',
+  cp: 'var(--sp-c-cp)',             divers: 'var(--sp-c-divers)',
+};
 
-/* ────────────────────────────────────────────
+/* ════════════════════════════════════════════════
+   OCR status au chargement
+═══════════════════════════════════════════════════ */
+fetch('/status').then(r => r.json()).then(d => updateOcrBadge(d)).catch(() => {});
+
+/* ════════════════════════════════════════════════
    State
-──────────────────────────────────────────── */
-const state = {
-  file: null, mapping: null,
-  anonText: '', filename: '', mappingData: {},
-};
-const stateDA = {
-  file: null, mapping: null,
-  restoredText: '', filename: '',
-};
+═══════════════════════════════════════════════════ */
+const state   = { file: null, mapping: null, anonText: '', filename: '', mappingData: {} };
+const stateDA = { file: null, mapping: null, restoredText: '', filename: '' };
 
-/* ────────────────────────────────────────────
-   Tabs
-──────────────────────────────────────────── */
+/* ════════════════════════════════════════════════
+   Tabs (utilise .is-active pour .sp-nav + .sp-tab-panel)
+═══════════════════════════════════════════════════ */
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('is-active'));
+    document.querySelectorAll('.sp-tab-panel').forEach(p => p.classList.remove('is-active'));
+    btn.classList.add('is-active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('is-active');
     if (btn.dataset.tab === 'admin')  loadAdminInfo();
     if (btn.dataset.tab === 'deanon') tryLoadSessionMapping();
   });
 });
 
-/* ────────────────────────────────────────────
-   Helpers
-──────────────────────────────────────────── */
-function setLoader(show) {
-  document.getElementById('loader').style.display = show ? 'flex' : 'none';
-}
-function setLoaderDA(show) {
-  document.getElementById('loader-da').style.display = show ? 'flex' : 'none';
-}
-function showError(msg) {
-  const box = document.getElementById('error-box');
-  box.textContent = '⚠ ' + msg;
-  box.style.display = 'block';
-}
-function showErrorDA(msg) {
-  const box = document.getElementById('error-box-da');
-  box.textContent = '⚠ ' + msg;
-  box.style.display = 'block';
-}
-function clearError() {
-  document.getElementById('error-box').style.display = 'none';
-}
-function clearErrorDA() {
-  document.getElementById('error-box-da').style.display = 'none';
+/* ════════════════════════════════════════════════
+   Stepper dynamique (tab Anonymiser)
+   currentStep = 1 → Déposer ; 2 → Personnaliser ; 3 → Récupérer
+═══════════════════════════════════════════════════ */
+const STEP_CHECK_SVG =
+  '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" ' +
+  'stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">' +
+  '<path d="M20 6L9 17l-5-5"/></svg>';
+
+function setStep(current) {
+  const steps = document.querySelectorAll('#anon-steps .sp-step');
+  steps.forEach(el => {
+    const n = parseInt(el.dataset.step, 10);
+    el.classList.remove('sp-step--done', 'sp-step--active', 'sp-step--todo');
+    const dot = el.querySelector('.sp-step-dot');
+    if (n < current)      { el.classList.add('sp-step--done');   dot.innerHTML = STEP_CHECK_SVG; }
+    else if (n === current){ el.classList.add('sp-step--active'); dot.textContent = String(n); }
+    else                   { el.classList.add('sp-step--todo');   dot.textContent = String(n); }
+  });
+  document.querySelectorAll('#anon-steps .sp-step-line').forEach(line => {
+    const [a] = line.dataset.line.split('-').map(Number);
+    line.classList.toggle('sp-step-line--done', a < current);
+  });
 }
 
-/** Remplace [TAG_N] par <span class="tag">[TAG_N]</span> */
+/* ════════════════════════════════════════════════
+   Helpers UI
+═══════════════════════════════════════════════════ */
+function setLoader(show)   { document.getElementById('loader').style.display    = show ? 'flex' : 'none'; }
+function setLoaderDA(show) { document.getElementById('loader-da').style.display = show ? 'flex' : 'none'; }
+function showError(msg)    { const b = document.getElementById('error-box');    b.textContent = '⚠ ' + msg; b.style.display = 'block'; }
+function showErrorDA(msg)  { const b = document.getElementById('error-box-da'); b.textContent = '⚠ ' + msg; b.style.display = 'block'; }
+function clearError()      { document.getElementById('error-box').style.display = 'none'; }
+function clearErrorDA()    { document.getElementById('error-box-da').style.display = 'none'; }
+
+/* Surligne les [TAG_N] en <span class="sp-ent {type}"> */
 function highlightTags(text) {
   return text
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/\[([A-Z0-9_]+_\d+)\]/g, '<span class="tag">[$1]</span>');
+    .replace(/\[([A-Za-z][A-Za-z0-9]*)_(\d+)\]/g, (m, cat, n) => {
+      const cls = ENT_CLASS[cat] || 'org';
+      return `<span class="sp-ent ${cls}">[${cat}_${n}]</span>`;
+    });
 }
 
-/* ────────────────────────────────────────────
-   Drag & Drop — Anonymiser
-──────────────────────────────────────────── */
-const dropZone = document.getElementById('drop-zone');
+/* ════════════════════════════════════════════════
+   Drop zone — ANONYMISER
+═══════════════════════════════════════════════════ */
+const dropZone  = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
 
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
 dropZone.addEventListener('drop', e => {
   e.preventDefault(); dropZone.classList.remove('drag-over');
@@ -828,12 +764,13 @@ fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fil
 function setFile(f) {
   state.file = f;
   const ext = f.name.split('.').pop().toLowerCase();
-  const icons = { pdf:'📑', png:'🖼️', jpg:'🖼️', jpeg:'🖼️', bmp:'🖼️', tiff:'🖼️', tif:'🖼️', webp:'🖼️', gif:'🖼️' };
-  const icon = icons[ext] || '📎';
-  document.getElementById('upload-icon').textContent = icon;
-  document.getElementById('file-label').textContent = `${icon} ${f.name} (${formatSize(f.size)})`;
+  const icons = { pdf:'📑', png:'🖼️', jpg:'🖼️', jpeg:'🖼️', bmp:'🖼️',
+                  tiff:'🖼️', tif:'🖼️', webp:'🖼️', gif:'🖼️' };
+  document.getElementById('upload-icon').textContent = icons[ext] || '📎';
+  document.getElementById('file-label').textContent = `${f.name} (${formatSize(f.size)})`;
   document.getElementById('btn-anonymize').disabled = false;
   clearError();
+  setStep(2);
 }
 
 document.getElementById('mapping-input').addEventListener('change', function() {
@@ -850,18 +787,20 @@ function resetAnon() {
   document.getElementById('mapping-input').value = '';
   document.getElementById('file-label').textContent = '';
   document.getElementById('mapping-label').textContent = 'Aucun';
+  document.getElementById('upload-icon').textContent = '📥';
   document.getElementById('btn-anonymize').disabled = true;
   document.getElementById('results').style.display = 'none';
   clearError();
+  setStep(1);
 }
 
-/* ────────────────────────────────────────────
-   Drag & Drop — Dé-anonymiser
-──────────────────────────────────────────── */
-const dropZoneDA = document.getElementById('drop-zone-da');
+/* ════════════════════════════════════════════════
+   Drop zone — DÉ-ANONYMISER
+═══════════════════════════════════════════════════ */
+const dropZoneDA  = document.getElementById('drop-zone-da');
 const fileInputDA = document.getElementById('file-input-da');
 
-dropZoneDA.addEventListener('dragover', e => { e.preventDefault(); dropZoneDA.classList.add('drag-over'); });
+dropZoneDA.addEventListener('dragover',  e => { e.preventDefault(); dropZoneDA.classList.add('drag-over'); });
 dropZoneDA.addEventListener('dragleave', () => dropZoneDA.classList.remove('drag-over'));
 dropZoneDA.addEventListener('drop', e => {
   e.preventDefault(); dropZoneDA.classList.remove('drag-over');
@@ -872,7 +811,7 @@ fileInputDA.addEventListener('change', () => { if (fileInputDA.files[0]) setFile
 
 function setFileDA(f) {
   stateDA.file = f;
-  document.getElementById('file-label-da').textContent = `📎 ${f.name} (${formatSize(f.size)})`;
+  document.getElementById('file-label-da').textContent = `${f.name} (${formatSize(f.size)})`;
   updateBtnDA();
 }
 
@@ -880,18 +819,14 @@ let mappingIsEncrypted = false;
 
 document.getElementById('mapping-input-da').addEventListener('change', async function() {
   if (!this.files[0]) return;
-  // Fichier manuel → remplace le mapping de session
   document.getElementById('session-banner').style.display = 'none';
   stateDA.mapping = this.files[0];
   document.getElementById('mapping-label-da').textContent = this.files[0].name;
-  // Détection chiffrement
   try {
     const txt = await this.files[0].text();
     const parsed = JSON.parse(txt);
     mappingIsEncrypted = parsed.encrypted === true;
-  } catch {
-    mappingIsEncrypted = false;
-  }
+  } catch { mappingIsEncrypted = false; }
   document.getElementById('mapping-pw-da-row').style.display = mappingIsEncrypted ? 'flex' : 'none';
   updateBtnDA();
 });
@@ -914,9 +849,9 @@ document.getElementById('btn-reset-da').addEventListener('click', () => {
   clearErrorDA();
 });
 
-/* ────────────────────────────────────────────
+/* ════════════════════════════════════════════════
    Anonymiser — submit
-──────────────────────────────────────────── */
+═══════════════════════════════════════════════════ */
 document.getElementById('btn-anonymize').addEventListener('click', async () => {
   if (!state.file) return;
   clearError();
@@ -949,9 +884,7 @@ function saveSessionMapping(data) {
       filename: data.filename,
       count: Object.keys(data.mapping).length,
     }));
-  } catch (e) {
-    console.warn('sessionStorage indisponible :', e);
-  }
+  } catch (e) { console.warn('sessionStorage indisponible :', e); }
 }
 
 function tryLoadSessionMapping() {
@@ -971,16 +904,13 @@ function tryLoadSessionMapping() {
     document.getElementById('session-map-count').textContent = saved.count;
     document.getElementById('session-banner').style.display = 'flex';
     updateBtnDA();
-  } catch (e) {
-    console.warn('Lecture session mapping échouée :', e);
-  }
+  } catch (e) { console.warn('Lecture session mapping échouée :', e); }
 }
 
 function clearSessionMapping() {
   sessionStorage.removeItem('safeprompt_mapping');
   clearSessionBanner();
 }
-
 function clearSessionBanner() {
   stateDA.mapping = null;
   document.getElementById('mapping-label-da').textContent = 'Aucun';
@@ -992,15 +922,14 @@ function clearSessionBanner() {
 }
 
 function renderResults(data) {
-  state.anonText = data.anonymized;
-  state.filename = data.filename;
+  state.anonText    = data.anonymized;
+  state.filename    = data.filename;
   state.mappingData = data.mapping;
   if (Object.keys(data.mapping).length > 0) saveSessionMapping(data);
 
-  // Badge méthode d'extraction
   const methodEl = document.getElementById('extraction-method');
   if (methodEl && data.method) {
-    methodEl.textContent = '⚙ ' + data.method;
+    methodEl.textContent = '· ' + data.method;
     methodEl.style.display = 'inline';
   }
 
@@ -1014,22 +943,26 @@ function renderResults(data) {
   for (const cat of data.summary) {
     total += cat.items.length;
     const div = document.createElement('div');
-    div.className = 'category-block';
+    div.className = 'sp-summary-cat';
+    const label = CATEGORY_LABELS[cat.category] || cat.category;
     const rows = cat.items.map(i =>
       `<tr><td>${escHtml(i.tag)}</td><td>${escHtml(i.original)}</td></tr>`
     ).join('');
-    div.innerHTML = `<h4>${escHtml(cat.category)}</h4><table>${rows}</table>`;
+    div.innerHTML = `<h4>${escHtml(label)}</h4><table>${rows}</table>`;
     body.appendChild(div);
   }
   document.getElementById('summary-count').textContent =
-    total === 0 ? 'Aucune donnée sensible détectée' : `${total} élément(s) anonymisé(s)`;
+    total === 0 ? 'Aucune donnée sensible détectée'
+                : `${total} information${total > 1 ? 's' : ''} sensible${total > 1 ? 's' : ''}`;
 
   document.getElementById('results').style.display = 'block';
+  setStep(3);
+  document.getElementById('results').scrollIntoView({behavior: 'smooth', block: 'start'});
 }
 
-/* ────────────────────────────────────────────
+/* ════════════════════════════════════════════════
    Dé-anonymiser — submit
-──────────────────────────────────────────── */
+═══════════════════════════════════════════════════ */
 document.getElementById('btn-deanonymize').addEventListener('click', async () => {
   clearErrorDA();
   document.getElementById('results-da').style.display = 'none';
@@ -1053,7 +986,7 @@ document.getElementById('btn-deanonymize').addEventListener('click', async () =>
     stateDA.filename     = data.filename;
 
     document.getElementById('original-text-da').innerHTML = highlightTags(data.original);
-    document.getElementById('anon-text-da').textContent = data.anonymized;
+    document.getElementById('anon-text-da').textContent   = data.anonymized;
     document.getElementById('results-da').style.display = 'block';
   } catch (e) {
     showErrorDA('Impossible de joindre le serveur : ' + e.message);
@@ -1062,9 +995,9 @@ document.getElementById('btn-deanonymize').addEventListener('click', async () =>
   }
 });
 
-/* ────────────────────────────────────────────
+/* ════════════════════════════════════════════════
    Téléchargements
-──────────────────────────────────────────── */
+═══════════════════════════════════════════════════ */
 document.getElementById('btn-dl-anon').addEventListener('click', () => {
   downloadText('/download', state.anonText, state.filename);
 });
@@ -1121,9 +1054,9 @@ function triggerDownload(blob, filename) {
   URL.revokeObjectURL(a.href);
 }
 
-/* ────────────────────────────────────────────
+/* ════════════════════════════════════════════════
    Utils
-──────────────────────────────────────────── */
+═══════════════════════════════════════════════════ */
 function formatSize(bytes) {
   if (bytes < 1024) return bytes + ' o';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' Ko';
@@ -1133,16 +1066,15 @@ function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-/* ────────────────────────────────────────────
-   Copier dans le presse-papier
-──────────────────────────────────────────── */
+/* ════════════════════════════════════════════════
+   Copier presse-papier
+═══════════════════════════════════════════════════ */
 async function copyEl(elId, btnId) {
   const el = document.getElementById(elId);
   const btn = document.getElementById(btnId);
   const text = el.textContent;
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
+  try { await navigator.clipboard.writeText(text); }
+  catch {
     const ta = document.createElement('textarea');
     Object.assign(ta.style, { position: 'fixed', opacity: '0' });
     ta.value = text;
@@ -1159,9 +1091,9 @@ async function copyEl(elId, btnId) {
   }
 }
 
-/* ────────────────────────────────────────────
+/* ════════════════════════════════════════════════
    Admin
-──────────────────────────────────────────── */
+═══════════════════════════════════════════════════ */
 function loadAdminInfo() {
   fetch('/admin/info').then(r => r.json()).then(d => {
     const sizeFmt = d.log_size < 1024 ? d.log_size + ' o'
@@ -1178,17 +1110,17 @@ function loadAdminInfo() {
     viewer.scrollTop = viewer.scrollHeight;
   }).catch(() => {
     document.getElementById('admin-info-body').innerHTML =
-      '<div style="color:#dc2626;font-size:.83rem">Erreur de chargement</div>';
+      '<div style="color:#C53030;font-size:12px">Erreur de chargement</div>';
   });
 }
 function row(k, v) {
-  return `<div class="admin-info-row"><span class="key">${escHtml(k)}</span><span class="val">${escHtml(String(v ?? ''))}</span></div>`;
+  return `<div class="sp-admin-row"><span class="k">${escHtml(k)}</span><span class="v">${escHtml(String(v ?? ''))}</span></div>`;
 }
 
 async function adminPurgeLogs() {
   if (!confirm('Supprimer tous les logs applicatifs ?')) return;
   const res = await fetch('/admin/purge-logs', { method: 'POST' });
-  showAdminMsg('admin-purge-msg', res.ok ? '✅ Logs purgés.' : '✘ Erreur.', res.ok);
+  showAdminMsg('admin-purge-msg', res.ok ? '✓ Logs purgés.' : '✘ Erreur.', res.ok);
   if (res.ok) loadAdminInfo();
 }
 
@@ -1196,66 +1128,60 @@ async function adminResetConfig() {
   if (!confirm('Réinitialiser la configuration (chemin Tesseract, etc.) ?\nL\'application devra être redémarrée.')) return;
   const res = await fetch('/admin/reset-config', { method: 'POST' });
   showAdminMsg('admin-reset-msg',
-    res.ok ? '✅ Config réinitialisée — redémarrez l\'application.' : '✘ Erreur.',
+    res.ok ? '✓ Config réinitialisée — redémarrez l\'application.' : '✘ Erreur.',
     res.ok);
 }
 
 function showAdminMsg(id, text, ok) {
   const el = document.getElementById(id);
   el.textContent = text;
-  el.style.color = ok ? '#1B7F4A' : '#dc2626';
+  el.className = 'sp-admin-msg ' + (ok ? 'ok' : 'err');
   el.style.display = 'block';
   setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
 
-/* init loader style */
+/* Init loader hidden */
 document.getElementById('loader').style.display = 'none';
 document.getElementById('loader-da').style.display = 'none';
 
-/* ────────────────────────────────────────────
-   Badge OCR dans le header + modale
-──────────────────────────────────────────── */
+/* ════════════════════════════════════════════════
+   OCR badge + modale
+═══════════════════════════════════════════════════ */
 function updateOcrBadge(d) {
   const badge = document.getElementById('header-ocr-badge');
   if (!badge) return;
   if (d.ocr_available) {
     badge.textContent = '✅ OCR actif';
-    badge.style.background = '#E6F7EE';
-    badge.style.color = '#1B7F4A';
-    badge.style.border = '1px solid #B2DFC7';
+    badge.style.background = '#ECF7F1';
+    badge.style.color = '#0C5E44';
+    badge.style.borderColor = '#B2DFC7';
   } else {
-    badge.textContent = '⚠️ OCR désactivé — Configurer';
-    badge.style.background = '#FFF8E6';
-    badge.style.color = '#92550A';
-    badge.style.border = '1px solid #F6D98A';
+    badge.textContent = '⚠ OCR désactivé — Configurer';
+    badge.style.background = '#FFF6E9';
+    badge.style.color = '#8A5E0C';
+    badge.style.borderColor = '#F3D8A0';
   }
   if (d.tesseract_path) {
     document.getElementById('tesseract-path-input').value = d.tesseract_path;
   }
-  // badge zone upload aussi
   const b = document.getElementById('ocr-status-badge');
   if (b) {
-    b.textContent = d.ocr_available ? '✅ ' + d.ocr_status : '⚠️ ' + d.ocr_status;
-    b.style.color  = d.ocr_available ? '#4ade80' : '#fbbf24';
+    b.textContent = d.ocr_available ? '✅ ' + d.ocr_status : '⚠ ' + d.ocr_status;
+    b.style.color = d.ocr_available ? 'var(--sp-green)' : '#8A5E0C';
   }
 }
-
-fetch('/status').then(r => r.json()).then(d => updateOcrBadge(d)).catch(() => {});
 
 function openOcrModal()  { document.getElementById('ocr-modal').classList.add('open'); }
 function closeOcrModal() {
   document.getElementById('ocr-modal').classList.remove('open');
   document.getElementById('ocr-modal-msg').style.display = 'none';
 }
-
-// Fermer en cliquant hors de la modale
 document.getElementById('ocr-modal').addEventListener('click', function(e) {
   if (e.target === this) closeOcrModal();
 });
 
 async function saveTesseractPath() {
   const path = document.getElementById('tesseract-path-input').value.trim();
-  const msg  = document.getElementById('ocr-modal-msg');
   if (!path) { showModalMsg('Veuillez entrer un chemin.', false); return; }
 
   const res  = await fetch('/set-tesseract', {
@@ -1281,19 +1207,9 @@ function showModalMsg(text, ok) {
   el.style.display = 'block';
 }
 
-/* ────────────────────────────────────────────
-   Catégories — chargement + persistance
-──────────────────────────────────────────── */
-
-const CATEGORY_LABELS = {
-  CB: 'Carte bancaire', NIR: 'N° sécu', IBAN: 'IBAN', SIRET: 'SIRET', SIREN: 'SIREN',
-  EMAIL: 'E-mail', MAC: 'Adresse MAC', IPv4: 'IPv4', IPv6: 'IPv6',
-  TEL: 'Téléphone', HOSTNAME: 'Hostname', CODE_POSTAL: 'Code postal',
-  PORT: 'Port réseau', DATE_NAISSANCE: 'Date de naissance',
-  PERSONNE: 'Personne (NER)', ORGANISATION: 'Organisation (NER)',
-  LIEU: 'Lieu (NER)', DIVERS: 'Divers (NER)',
-};
-
+/* ════════════════════════════════════════════════
+   Catégories — chargement + rendu sp-toggle-row + persist
+═══════════════════════════════════════════════════ */
 let categoriesState = { all: [], disabled: new Set() };
 
 async function loadCategories() {
@@ -1309,80 +1225,100 @@ async function loadCategories() {
 }
 
 function renderCategories() {
-  const grid = document.getElementById('categories-grid');
-  grid.innerHTML = '';
+  const root = document.getElementById('categories-grid');
+  root.innerHTML = '';
   for (const cat of categoriesState.all) {
-    const label = document.createElement('label');
-    label.className = 'cat-toggle';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.value = cat;
-    cb.checked = !categoriesState.disabled.has(cat);
-    cb.addEventListener('change', onCategoryToggle);
+    const row = document.createElement('label');
+    row.className = 'sp-toggle-row';
+    const checked = !categoriesState.disabled.has(cat);
+    if (!checked) row.classList.add('is-off');
+
+    const dot = document.createElement('span');
+    dot.className = 'sp-dot';
+    const cls = ENT_CLASS[cat] || 'divers';
+    if (checked) dot.style.background = ENT_COLOR_VAR[cls] || 'var(--sp-violet)';
+
     const txt = document.createElement('span');
-    txt.textContent = CATEGORY_LABELS[cat] || cat;
-    label.appendChild(cb);
-    label.appendChild(txt);
-    grid.appendChild(label);
+    txt.className = 'sp-toggle-text';
+    txt.innerHTML =
+      `<div class="sp-toggle-name">${escHtml(CATEGORY_LABELS[cat] || cat)}</div>
+       <div class="sp-toggle-desc">${escHtml(CATEGORY_DESC[cat] || '')}</div>`;
+
+    const sw = document.createElement('span');
+    sw.className = 'sp-switch';
+    sw.innerHTML =
+      `<input type="checkbox" value="${escHtml(cat)}" ${checked ? 'checked' : ''}>
+       <span class="track"></span><span class="knob"></span>`;
+    sw.querySelector('input').addEventListener('change', onCategoryToggle);
+
+    row.appendChild(dot);
+    row.appendChild(txt);
+    row.appendChild(sw);
+    root.appendChild(row);
   }
   updateCategorySummary();
 }
 
 function updateCategorySummary() {
-  const total = categoriesState.all.length;
+  const total  = categoriesState.all.length;
   const active = total - categoriesState.disabled.size;
-  const badge = document.getElementById('cat-summary-count');
-  badge.textContent = `${active}/${total} actives`;
+  document.getElementById('cat-summary-count').textContent = `${active}/${total} actives`;
 }
 
-let saveTimer = null;
+let catSaveTimer = null;
 function onCategoryToggle(e) {
-  if (e.target.checked) categoriesState.disabled.delete(e.target.value);
-  else categoriesState.disabled.add(e.target.value);
+  const cat = e.target.value;
+  if (e.target.checked) categoriesState.disabled.delete(cat);
+  else categoriesState.disabled.add(cat);
+  // Visual : grise la ligne si désactivée
+  const row = e.target.closest('.sp-toggle-row');
+  if (row) row.classList.toggle('is-off', !e.target.checked);
+  // Met à jour la couleur de la pastille
+  const dot = row?.querySelector('.sp-dot');
+  if (dot) {
+    const cls = ENT_CLASS[cat] || 'divers';
+    dot.style.background = e.target.checked ? (ENT_COLOR_VAR[cls] || 'var(--sp-violet)') : '';
+  }
   updateCategorySummary();
-  setSaveStatus('Enregistrement…', '');
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveCategories, 400);
+  setCatStatus('Enregistrement…', '');
+  clearTimeout(catSaveTimer);
+  catSaveTimer = setTimeout(saveCategories, 400);
 }
 
 async function saveCategories() {
   try {
     const res = await fetch('/categories', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({disabled: [...categoriesState.disabled]}),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ disabled: [...categoriesState.disabled] }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erreur');
-    setSaveStatus('✓ Enregistré', 'ok');
-    setTimeout(() => setSaveStatus('', ''), 1500);
+    setCatStatus('✓ Enregistré', 'ok');
+    setTimeout(() => setCatStatus('', ''), 1500);
   } catch (e) {
-    setSaveStatus('✘ ' + e.message, 'err');
+    setCatStatus('✘ ' + e.message, 'err');
   }
 }
 
-function setSaveStatus(text, cls) {
+function setCatStatus(text, cls) {
   const el = document.getElementById('cat-save-status');
   el.textContent = text;
-  el.className = 'cat-status ' + cls;
+  el.className = 'sp-cat-status ' + cls;
 }
 
 function setAllCategories(active) {
   if (active) categoriesState.disabled.clear();
   else categoriesState.disabled = new Set(categoriesState.all);
-  for (const cb of document.querySelectorAll('#categories-grid input[type=checkbox]')) {
-    cb.checked = !categoriesState.disabled.has(cb.value);
-  }
-  updateCategorySummary();
+  renderCategories();
   saveCategories();
 }
 
 document.addEventListener('DOMContentLoaded', loadCategories);
 
-/* ────────────────────────────────────────────
+/* ════════════════════════════════════════════════
    NER whitelist
-──────────────────────────────────────────── */
-
+═══════════════════════════════════════════════════ */
 let wlSaveTimer = null;
 
 async function loadNerWhitelist() {
@@ -1398,13 +1334,13 @@ async function loadNerWhitelist() {
 }
 
 function updateWlCount(n) {
-  document.getElementById('wl-count').textContent = n + ' entrée' + (n > 1 ? 's' : '');
+  document.getElementById('wl-count').textContent = `${n} entrée${n > 1 ? 's' : ''}`;
 }
 
 function setWlStatus(text, cls) {
   const el = document.getElementById('wl-save-status');
   el.textContent = text;
-  el.className = 'cat-status ' + cls;
+  el.className = 'sp-cat-status ' + cls;
 }
 
 async function saveNerWhitelist() {
@@ -1413,8 +1349,8 @@ async function saveNerWhitelist() {
   try {
     const res = await fetch('/ner-whitelist', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({whitelist: items}),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ whitelist: items }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erreur');

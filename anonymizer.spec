@@ -36,6 +36,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ("templates",     "templates"),
+        ("static",        "static"),
         ("anonymizer.py", "."),
         ("ocr.py",        "."),
         ("paths.py",      "."),
