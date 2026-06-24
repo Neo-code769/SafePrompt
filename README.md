@@ -2,9 +2,9 @@
 
 # Anonymiseur de données sensibles — Action Telecom
 
-Outil d'anonymisation de textes, logs, PDF et images avant soumission à un service d'IA externe (ChatGPT, Claude, Mistral, etc.). Traitement 100 % local ou intranet — aucune donnée ne sort du SI.
+Outil d'anonymisation de textes, logs, PDF et images avant soumission à un service d'IA externe (ChatGPT, Claude, Mistral, etc.). Traitement 100 % local ou intranet, aucune donnée ne sort du SI.
 
-**Version actuelle : 1.1.0**
+**Version actuelle : 1.2**
 
 ## Fonctionnalités
 
